@@ -38,7 +38,7 @@ If($edit_video -eq 'y') {
     $contrast = Read-Host 'Contrast (-2.0 - 2.0) (1.0 = normal)? '
     $shouldPreview = Read-Host 'Preview Video? (y/n) '
     If($shouldPreview -eq 'y') {
-      $previewString = 'ffplay -vf "eq=gamma=' + $gamma + ':saturation=' + $saturation + ':contrast=' + $contrast + '" ' + $filename
+      $previewString = 'ffplay -vf "eq=gamma=' + $gamma + ':saturation=' + $saturation + ':contrast=' + $contrast + '" ' + '"' + $filename + '"'
       Write-Host $previewString
       Invoke-Expression $previewString
       $video_satisfied = Read-Host 'Keep Video Settings? (y/n) '
@@ -51,6 +51,6 @@ If($edit_video -eq 'y') {
 #ffmpeg -i $filename -ss $begin -t $duration -vcodec copy $audio_code copy G:\Stock_footage\$filename
 #ffmpeg -i $filename $trim_code -vcodec copy $audio_code copy G:\Stock_footage\$filename
 
-$finalString = 'ffmpeg -i ' + $filename + $trim_code + $video_code + $audio_code + ' ' + $fullPath + $filename
+$finalString = 'ffmpeg -i "' + $filename + '"' + $trim_code + $video_code + $audio_code + ' "' + $fullPath + $filename + '"'
 Write-Host $finalString
 Invoke-Expression $finalString
