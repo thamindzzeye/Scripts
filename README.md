@@ -26,7 +26,7 @@ $ps_script_dir = "C:\Scripts\"
 
 New-Alias img2mov $ps_script_dir\createVideoFromImages.ps1
 New-Alias youtube $ps_script_dir\yt-dl.ps1
-New-Alias trimVideo $ps_script_dir\trimVideo.ps1
+New-Alias edit_video $ps_script_dir\trimVideo.ps1
 New-Alias youtube_music $ps_script_dir\yt-music.ps1
 ```
 
