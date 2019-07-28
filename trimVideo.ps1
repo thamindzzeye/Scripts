@@ -2,6 +2,14 @@
 $filename = Read-Host 'What is the filename? '
 $trim = Read-Host 'Trim the Video Length? (y/n) '
 $trim_code = ''
+
+$fullPath = 'C:\Script_Outputs\edited_videos\'
+
+If(!(test-path $fullPath))
+{
+      New-Item -ItemType Directory -Force -Path $fullPath
+}
+
 If($trim -eq 'y') {
   $begin = Read-Host 'What is the start timestamp? '
   $duration = Read-Host 'What is the duration? '
@@ -43,6 +51,6 @@ If($edit_video -eq 'y') {
 #ffmpeg -i $filename -ss $begin -t $duration -vcodec copy $audio_code copy G:\Stock_footage\$filename
 #ffmpeg -i $filename $trim_code -vcodec copy $audio_code copy G:\Stock_footage\$filename
 
-$finalString = 'ffmpeg -i ' + $filename + $trim_code + $video_code + $audio_code + ' G:\Stock_footage\' + $filename
+$finalString = 'ffmpeg -i ' + $filename + $trim_code + $video_code + $audio_code + ' ' + $fullPath + $filename
 Write-Host $finalString
 Invoke-Expression $finalString
