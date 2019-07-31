@@ -1,23 +1,19 @@
 
 
 #While(1) {
-For-Each ($filename in Get-ChildItem | Where-Object {".mp4",".mov", "avi" -eq $_.extension}) {
-  $filename = Read-Host -Prompt 'What is the filename? (no extension)'
-  $exists = Test-Path $filename
-  If($exists) {
-  } Else {
-
-    $filename = $filename + ".mp4"
-    if(Test-Path $filename) { }
-    Else {
-      Invoke-Expression 'clear'
-      Invoke-Expression 'ls'
-      Write-Host ''
-      Write-Warning 'Invalid filename try again'
-      Write-Host ''
+$allFiles = Get-ChildItem | Where-Object {".mp4",".mov", "avi" -eq $_.extension}
+foreach ($filename in $allFiles) {
+  write-host ('Process file ' + $filename) -ForegroundColor Green
+  $shouldInclude = Read-Host -Prompt '(y)es / (n)o / (p)review'
+  If($shouldInclude -eq 'p') {
+    #preview
+    Invoke-Expression ('ffplay -i ' + $filename)
+    $shouldInclude = Read-host -prompt ('Include ' + $filename + ' ? (y)es / (n)o')
+    if ($shouldInclude -eq 'n') {
       continue
     }
-
+  } Elseif ($shouldInclude -eq 'n') {
+    continue
   }
   $trim = Read-Host -Prompt 'Trim the Video Length? (y/n)'
   $trim_code = ''
@@ -70,6 +66,6 @@ For-Each ($filename in Get-ChildItem | Where-Object {".mp4",".mov", "avi" -eq $_
   Write-Host $finalString
   Invoke-Expression $finalString
   Write-Host ""
-  Write-Warning "Success"
+  Write-Host "***       Successfully generated video     ***" -backgroundcolor Green -ForegroundColor Black
   Write-Host ""
 }
