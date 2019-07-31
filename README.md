@@ -28,6 +28,7 @@ New-Alias img2mov $ps_script_dir\createVideoFromImages.ps1
 New-Alias youtube $ps_script_dir\yt-dl.ps1
 New-Alias trimVideo $ps_script_dir\trimVideo.ps1
 New-Alias youtube_music $ps_script_dir\yt-music.ps1
+New-Alias crop4k $ps_script_dir\crop4k.ps1
 ```
 
 Then Save the file, exit powershell, and relaunch it for the changes to take effect. 
