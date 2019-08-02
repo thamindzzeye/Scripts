@@ -1,6 +1,7 @@
-import os, subprocess
+import os, subprocess, platform
 from os import listdir
 from os.path import isfile, join
+
 
 
 def filter_files_for_videos(files):
@@ -71,6 +72,7 @@ def process_video(video):
 
 
 #start of script
+isWindows = platform.system() == 'Windows'
 print("""
 
 
