@@ -64,7 +64,7 @@ for img in images:
     height = height * min(factor_h, factor_w)
 
 
-    command = 'magick ' + img + ' -interpolative-resize ' + str(width) + ' ' + destination_temp + 'main_temp.png'
+    command = 'magick "' + img + '" -interpolative-resize ' + str(width) + ' ' + destination_temp + 'main_temp.png'
     print('Image dimensions are ' + str(width) + ' x ' + str(height))
     print(command)
     os.system(command)
@@ -76,7 +76,7 @@ for img in images:
     final_width = width_4k + 2 * padding_all_sides
     final_height = height_4k + 2 * padding_all_sides
 
-    command = 'magick ' + img + ' -interpolative-resize ' + str(width + 2 * padding_all_sides) + ' -blur 0x50 ' + ' -crop ' + str(final_width) + 'x' + str(final_height) + '+0+0 ' + destination_temp + 'bg_temp.png'
+    command = 'magick "' + img + '" -interpolative-resize ' + str(width + 2 * padding_all_sides) + ' -blur 0x50 ' + ' -crop ' + str(final_width) + 'x' + str(final_height) + '+0+0 ' + destination_temp + 'bg_temp.png'
     print(command)
     os.system(command)
 
@@ -96,7 +96,7 @@ for img in images:
 
     img = os.path.splitext(img)[0] + '.png'
     # command = 'magick composite -geometry +' + str(main_x_offset) + '+' + str(main_y_offset) + ' ' + destination_temp + 'main_temp.png -geometry ' + str(width_4k + padding_all_sides) + 'x' + str(height_4k + padding_all_sides) + '-' + str(bg_x_offset) + '+' + str(bg_y_offset) + ' ' + destination_temp + 'bg_temp.png ' + destination_folder + img_filename
-    command = 'magick composite -geometry +' + str(main_x_offset) + '+' + str(main_y_offset) + ' ' + destination_temp + 'main_temp.png ' + destination_temp + 'bg_temp.png ' + destination_folder + img
+    command = 'magick composite -geometry +' + str(main_x_offset) + '+' + str(main_y_offset) + ' ' + destination_temp + 'main_temp.png ' + destination_temp + 'bg_temp.png "' + destination_folder + img +'"'
 
     print(command)
     os.system(command)
