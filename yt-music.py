@@ -14,7 +14,7 @@ os_user = 'ricky'
 if isWindows:
       destination_itunes = ('C:\\Users\\' + os_user + '\\Music\\iTunes\\iTunes Media\\Automatically Add to iTunes\\')
 else:
-      destination_itunes = '/Users/' + os_user +'/Music/iTunes Media Automatically Add to iTunes/'
+      destination_itunes = '/Users/' + os_user +'/Music/iTunes/iTunes Media Automatically Add to iTunes/'
       destination_folder = '/Users/' + os_user +'/script_output/youtube/'
 
 
