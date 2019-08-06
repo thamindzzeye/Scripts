@@ -48,6 +48,11 @@ else:
 
 
 padding_all_sides = float(input('How much padding around each side? (0 adds non extra) '))
+blur_edges = input('Blur the 4 edges of the image into the background? (y)es / (n)o ')
+blur_code = ' '
+if blur_edges == 'y':
+    blur_code = ' -alpha set -virtual-pixel transparent -channel A  -morphology Distance Euclidean:20,50\! +channel '
+
 
 for img in images:
 
@@ -63,8 +68,9 @@ for img in images:
     width = width * min(factor_w,factor_h)
     height = height * min(factor_h, factor_w)
 
-
-    command = 'magick "' + img + '" -interpolative-resize ' + str(width) + ' ' + destination_temp + 'main_temp.png'
+#feather approach -alpha set -virtual-pixel transparent -channel A -morphology Distance Euclidean:20,50\! +channel '
+#blur approach -alpha set -virtual-pixel transparent -channel A -blur 0x50  -level 65%,100% +channel
+    command = 'magick "' + img + '" -interpolative-resize ' + str(round(width,0)) + blur_code + destination_temp + 'main_temp.png'
     print('Image dimensions are ' + str(width) + ' x ' + str(height))
     print(command)
     os.system(command)
@@ -76,7 +82,7 @@ for img in images:
     final_width = width_4k + 2 * padding_all_sides
     final_height = height_4k + 2 * padding_all_sides
 
-    command = 'magick "' + img + '" -interpolative-resize ' + str(width + 2 * padding_all_sides) + ' -blur 0x50 ' + ' -crop ' + str(final_width) + 'x' + str(final_height) + '+0+0 ' + destination_temp + 'bg_temp.png'
+    command = 'magick "' + img + '" -interpolative-resize ' + str(round(width + 2 * padding_all_sides,0)) + ' -blur 0x60 ' + ' -crop ' + str(round(final_width,0)) + 'x' + str(round(final_height,0)) + '+0+0 ' + destination_temp + 'bg_temp.png'
     print(command)
     os.system(command)
 
@@ -87,12 +93,14 @@ for img in images:
     width = width_original * min(factor_w,factor_h)
     height = height_original * min(factor_h, factor_w)
     print('h = ' + str(height) + ' w=' + str(width))
-    if width >= width_4k:
+    if width / width_4k >= height / height_4k:
+        print('width is bigger')
         bg_x_offset = (width - (width_4k + padding_all_sides) / 2)
-        main_y_offset = (height_4k - height) / 2 + padding_all_sides
+        main_y_offset = round((height_4k - height) / 2 + padding_all_sides,1)
+        print('width = ', str(main_y_offset))
     else:
         bg_y_offset = (height - (height_4k + padding_all_sides)) / 2
-        main_x_offset = (width_4k - width) / 2 + padding_all_sides
+        main_x_offset = round((width_4k - width) / 2 + padding_all_sides,1)
 
     img = os.path.splitext(img)[0] + '.png'
     # command = 'magick composite -geometry +' + str(main_x_offset) + '+' + str(main_y_offset) + ' ' + destination_temp + 'main_temp.png -geometry ' + str(width_4k + padding_all_sides) + 'x' + str(height_4k + padding_all_sides) + '-' + str(bg_x_offset) + '+' + str(bg_y_offset) + ' ' + destination_temp + 'bg_temp.png ' + destination_folder + img_filename
