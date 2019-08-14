@@ -18,7 +18,7 @@ Then to update, just open git bash, go to the c:\Scripts directory and type
 
 net you'll need to install chocolately user powershell
 
-open powershell and then
+open powershell as an administrator and then
 
 ```
 Get-ExecutionPolicy
@@ -37,6 +37,8 @@ Now you need to install image magick
 ```
 choco install imagemagick
 ```
+```
+choco install python
 ```
 pip install pillow
 ```
