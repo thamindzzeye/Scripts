@@ -41,6 +41,9 @@ choco install imagemagick
 choco install python
 ```
 ```
+choco install pip
+```
+```
 pip install pillow
 ```
 
