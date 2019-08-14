@@ -16,6 +16,31 @@ This will clone the repo to the location C:\Scripts\
 Then to update, just open git bash, go to the c:\Scripts directory and type
 > git pull
 
+net you'll need to install chocolately user powershell
+
+open powershell and then
+
+```
+Get-ExecutionPolicy
+```
+If it returns Restricted then run
+```
+Set-ExecutionPolicy Bypass -Scope Process
+```
+
+Now you will install chocolately
+```
+Set-ExecutionPolicy Bypass -Scope Process -Force; iex ((New-Object System.Net.WebClient).DownloadString('https://chocolatey.org/install.ps1'))
+```
+
+Now you need to install image magick
+```
+choco install imagemagick
+```
+```
+pip install pillow
+```
+
 To update your $profile
 
 > Notepad $PROFILE
