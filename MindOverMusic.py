@@ -82,22 +82,24 @@ totalLengthInSecs = 0
 
 finalTextFile = ''
 songIndex = 1
-currentSeconds = 0
 while len(files) > 0:
+    print("loop start total = " + str(totalLengthInSecs) + ' count = ' + str(len(files)))
     numElements = len(files) - 1
     index = random.randint(0, numElements)
     file = files[index]
     if file == '.DS_Store':
+        files.remove(files[index])
         continue
 
     files.remove(files[index])
     filepath = os.path.join(path, file)
     fileContent += "file \'" + filepath + '\'\n'
     seconds = getSongSeconds(filepath)
-
-    finalTextFile += str(songIndex) + ': [' + convertSecsToStringLabel(currentSeconds) + ' - ' + convertSecsToStringLabel(currentSeconds + seconds) + '] ' + file + ' [' + convertSecsToMMSS(seconds) + ']\n'
+    newFinalTextFile = str(songIndex) + ': [' + convertSecsToStringLabel(totalLengthInSecs) + ' - '
+    newFinalTextFile += convertSecsToStringLabel(totalLengthInSecs + seconds) + '] ' + file + ' [' + convertSecsToMMSS(seconds) + ']\n'
+    print(newFinalTextFile)
+    finalTextFile += newFinalTextFile
     songIndex += 1
-    currentSeconds += seconds
     totalLengthInSecs += seconds
     if totalLengthInSecs > desiredDuration:
         break
