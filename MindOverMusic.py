@@ -24,32 +24,50 @@ def getSongSeconds(path):
     length_in_secs = int(audio_info.length)
     return length_in_secs
 
+def convertSecsToMMSS(seconds):
+    hours = seconds // (60*60)
+    seconds %= (60*60)
+    minutes = seconds // 60
+    seconds %= 60
+    return "%02i:%02i" % (minutes, seconds)
+
+def convertSecsToStringLabel(seconds):
+    hours = seconds // (60*60)
+    seconds %= (60*60)
+    minutes = seconds // 60
+    seconds %= 60
+    return "%02i:%02i:%02i" % (hours, minutes, seconds)
+
+os.system('clear')
 desiredDurationInHours = 3
 desiredDuration = desiredDurationInHours * 3600 + 1200
 
-print('\n\n\n Don\'t forget to install : pip3 install mutagen')
-print('Don\'t forget to install : brew install mp3wrap')
+print('\n\n\nDon\'t forget to install : pip3 install mutagen')
+print('Don\'t forget to install : brew install mp3wrap \n\n\n\n\n\n\n')
 
 path_lofi = '/Volumes/Dorne/Music/Lofi'
 path_relax = '/Volumes/Dorne/Music/Relaxation'
 path_test = '/Volumes/Dorne/Music/Test'
 path_videoRecord = '/Volumes/Dorne/Music/VideoRecord'
 path = ''
+musicRootPath = '/Volumes/Dorne/Music'
+musicTypes = os.listdir(musicRootPath)
+musicTypes.remove('VideoRecord')
+musicTypes.remove('.DS_Store')
+musicIndex = 1
+for musicType in musicTypes:
+    print('['+ str(musicIndex) + '] ' + musicType)
+    musicIndex += 1
 
-type = input('What Style do you want (L) for Lofi (R) for Relaxation :')
 
+
+type = input('\n\nWhat Folder of music do you want to use? :')
+typeInt = int(type)
+type = musicTypes[typeInt - 1]
+print('You chose [' + str(typeInt) + '] ' + type + '\n\n')
 files = ''
 
-if type == 'L':
-    path = path_lofi
-    type = 'Lofi'
-elif type == 'R':
-    path = path_relax
-    type = 'Relaxation'
-elif type == 'T':
-    path = path_test
-    type = 'Test'
-
+path = os.path.join(musicRootPath, type)
 
 files = os.listdir(path)
 
@@ -61,6 +79,10 @@ textFilePath = os.path.join(path_videoRecord, textFileName)
 my_file = open(textFilePath,"w+")
 fileContent = ''
 totalLengthInSecs = 0
+
+finalTextFile = ''
+songIndex = 1
+currentSeconds = 0
 while len(files) > 0:
     numElements = len(files) - 1
     index = random.randint(0, numElements)
@@ -68,11 +90,14 @@ while len(files) > 0:
     if file == '.DS_Store':
         continue
 
-    print(file)
     files.remove(files[index])
     filepath = os.path.join(path, file)
     fileContent += "file \'" + filepath + '\'\n'
     seconds = getSongSeconds(filepath)
+
+    finalTextFile += str(songIndex) + ': [' + convertSecsToStringLabel(currentSeconds) + ' - ' + convertSecsToStringLabel(currentSeconds + seconds) + '] ' + file + ' [' + convertSecsToMMSS(seconds) + ']\n'
+    songIndex += 1
+    currentSeconds += seconds
     totalLengthInSecs += seconds
     if totalLengthInSecs > desiredDuration:
         break
@@ -83,3 +108,6 @@ print(textFilePath)
 command = 'ffmpeg -f concat -safe 0 -i ' + textFilePath + ' -c copy ' + outputPath
 print(command)
 os.system(command)
+my_file = open(textFilePath,"w+")
+my_file.write(finalTextFile)
+my_file.close()
