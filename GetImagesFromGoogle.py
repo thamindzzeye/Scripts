@@ -131,7 +131,8 @@ rootPath = os.path.expanduser('~')
 driverPath = os.path.join(rootPath, 'Code/chromeDriver/chromedriver')
 rootPath = os.path.join(rootPath, 'Downloads/ImagesResearcher')
 projectPath = rootPath
-
+if not os.path.exists(rootPath):
+    os.makedirs(rootPath)
 
 
 padding_all_sides = 100
