@@ -43,7 +43,7 @@ def getScripts():
     if os.path.exists(scriptsPath) == False:
         os.system('git clone git@github.com:thamindzzeye/Scripts.git')
     os.chdir(scriptsPath)
+    os.system('git reset --hard origin/master')
     os.system('git pull')
 
-# getFcpxPlugins()
-os.system('git pull')
+getFcpxPlugins()
