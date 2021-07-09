@@ -76,7 +76,7 @@ def checkForMissingFiles():
         Please re-run blender with overwrite turned off to complete the renders
         Then run this program again!
         """)
-        print('Empty files deleted:')
+        print('Empty files detected:')
         print(emptyFrames)
         deleteEmpty = input('Delete Empty zero byte frames? (y)es / (n)o) : ')
         if (deleteEmpty == 'y' or deleteEmpty == 'Y'):

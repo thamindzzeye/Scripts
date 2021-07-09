@@ -63,6 +63,7 @@ alias imageUpscale="python3 ~/Code/Scripts/image_upscale.py"
 alias imageResearcher="python3 ~/Code/Scripts/GetImagesFromGoogle.py"
 alias updateAllScripts="python3 ~/Code/Scripts/updateAllScripts.py"
 alias testScript="python3 ~/Code/Scripts/test.py"
+alias createSampleVideo="python3 ~/Code/Scripts/createSampleVideos.py"
 """
     copy2clip(aliasValues)
     print("""
