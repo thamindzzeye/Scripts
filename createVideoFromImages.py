@@ -45,8 +45,13 @@ def checkForMissingFiles():
     #First lets check if files are files are missing
     missingFrames = []
     emptyFrames = []
+
     renameDelta = numbers[0] - 1
     checkFile = 1
+
+    if numbers[0] == 0:
+        renameDelta = 0
+        checkFile = 0
     filesToDelete = []
     for index in numbers:
         rightNumber = index
@@ -81,6 +86,7 @@ def checkForMissingFiles():
         deleteEmpty = input('Delete Empty zero byte frames? (y)es / (n)o) : ')
         if (deleteEmpty == 'y' or deleteEmpty == 'Y'):
             for file in filesToDelete:
+                print('RROY: deleting!')
                 os.remove(file)
         print('Missing Files:')
         print(missingFrames)

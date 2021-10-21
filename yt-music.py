@@ -4,6 +4,14 @@ from os import listdir
 from os.path import isfile, join
 from pathlib import Path
 
+def replaceBadCharacters(input):
+    badCharacters = ['/', '\\']
+    output = input
+    for char in badCharacters:
+        output.replace(char, '_')
+    return output
+
+
 
 isWindows = platform.system() == 'Windows'
 destination_itunes = ''
@@ -35,7 +43,11 @@ print(command)
 os.system(command)
 
 artist = input('what is the name of the artist? : ')
+artist = replaceBadCharacters(artist)
+
 title = input('what is the name of the title? : ')
+title = replaceBadCharacters(title)
+
 filename = artist.title() + ' - ' + title.title() + '.mp3'
 save_to_itunes = input('Auto add to your iTunes Library? (y)es / (n)o : ')
 full_path = ''
@@ -53,6 +65,6 @@ os.remove(destination_folder + 'temp.mp3')
 
 print("""
 
-Copmlete
+Complete
 
 """)

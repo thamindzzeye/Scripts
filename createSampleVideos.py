@@ -23,7 +23,7 @@ Video Files Found:
 
 for file in files:
     split = file.split('.')
-    if split[-1] in videoExtensions:
+    if split[-1].lower() in videoExtensions:
         #we have a video file
         videosFound.append(file)
         print(str(selectionIndex) + '. ' + file)
