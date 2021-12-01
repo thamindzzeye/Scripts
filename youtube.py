@@ -14,7 +14,7 @@ if not os.path.exists(destination):
 
 url = input('What is the youtube (share) URL? :  ')
 
-command = 'youtube-dl -f \'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio\' --merge-output-format mp4 --output ' + fileLocation + ' ' + '\'' + url + '\''
+command = 'yt-dlp -f \'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio\' --merge-output-format mp4 --output ' + fileLocation + ' ' + '\'' + url + '\''
 print(command)
 os.system(command)
 
