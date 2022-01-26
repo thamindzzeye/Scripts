@@ -38,7 +38,7 @@ if os.path.exists(destination_folder + 'temp.mp3'):
 
 url = input('What is the youtube URL? :  ')
 
-command = 'youtube-dl -f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 ' + url + ' -o "' + destination_folder + 'temp.mp3"'
+command = 'yt-dlp -f bestaudio --extract-audio --audio-format mp3 --audio-quality 0 ' + url + ' -o "' + destination_folder + 'temp.mp3"'
 print(command)
 os.system(command)
 
