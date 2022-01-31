@@ -15,6 +15,9 @@ def getFcpxPlugins():
     githubPath = os.path.join(downloadsPath, 'FcpxPlugins')
     origination = os.path.join(githubPath, 'Motion Templates.localized')
     destination = os.path.join(moviesPath, 'Motion Templates.localized')
+    presetsDestination = os.path.join(rootPath, "Library/Application Support/ProApps/Effects Presets")
+    presetsOrigination = os.path.join(destination, 'Presets')
+
     print('Updating Final Cut Pro Plugins...')
     if os.path.exists(githubPath):
         os.chdir(githubPath)
@@ -27,6 +30,15 @@ def getFcpxPlugins():
     shutil.move(origination, destination)
     shutil.rmtree(githubPath, ignore_errors=True)
 
+    #Lets add the presets Now
+    for root, dirs, files in os.walk(presetsPath):
+        for file in files:
+            os.remove(os.path.join(root, file))
+    for root, dirs, files in os.walk(presetsOrigination):
+        for file in files:
+            start = os.path.join(root, file)
+            shutil.move(start, presetsDestination)
+    
     print("""
     Finished Updating Final Cut Pro Plugins.
     Please Force Quit Final Cut Pro
