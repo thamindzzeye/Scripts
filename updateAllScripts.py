@@ -31,14 +31,14 @@ def getFcpxPlugins():
     shutil.rmtree(githubPath, ignore_errors=True)
 
     #Lets add the presets Now
-    for root, dirs, files in os.walk(presetsPath):
+    for root, dirs, files in os.walk(presetsDestination):
         for file in files:
             os.remove(os.path.join(root, file))
     for root, dirs, files in os.walk(presetsOrigination):
         for file in files:
             start = os.path.join(root, file)
             shutil.move(start, presetsDestination)
-    
+
     print("""
     Finished Updating Final Cut Pro Plugins.
     Please Force Quit Final Cut Pro
