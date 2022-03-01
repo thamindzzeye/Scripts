@@ -7,7 +7,8 @@ import re
 
 #Global Variables
 workingDir = os.getcwd()
-destination = '~/Downloads/'
+
+destination = os.path.expanduser('~\Downloads')
 
 #Functions
 def getAllUniqueFileNames():
@@ -33,15 +34,15 @@ def checkForMissingFiles():
         if file.startswith('.'):
             continue
         split = file.split('_')
-        split2 = split[1].split('.')
+        split2 = split[-1].split('.')
         number = split2[0]
         extension = split2[1]
-        name = split[0]
+        name = file.replace("_" + split[-1],"")
+
         zeroes = len(number)
         numbers.append(int(number))
 
     numbers = sorted(numbers)
-
     #First lets check if files are files are missing
     missingFrames = []
     emptyFrames = []
