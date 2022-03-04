@@ -1,4 +1,3 @@
-
 import os, subprocess, platform, sys
 from os import listdir
 from os.path import isfile, join
@@ -8,113 +7,101 @@ import re
 #Global Variables
 workingDir = os.getcwd()
 
-destination = os.path.expanduser('~\Downloads')
+destination = os.path.expanduser('~/Downloads')
 
-#Functions
-def getAllUniqueFileNames():
-    files = os.listdir(workingDir)
+dict = {}
+debug = False
+
+def log(str):
+    if debug:
+        print(str)
+
+# [folderPath, file, name, number, extension]
+def breakdownFilePath(fullPath):
+    split = os.path.split(fullPath.lower())
+    folderPath = split[0]
+    file = split[1]
+    regexStr = '[0-9]{2,8}\.(png|jpg)'
+    match = re.search(regexStr, file.lower())
+    name = file.replace(match.group(),"")
+    substr = match.group()
+    number = re.search('[0-9]{2,8}',substr)
+    number = number.group()
+    extension  = substr.replace(number,"")
+
+    return [folderPath, file, name, number, extension]
+
+def keyForFile(file):
+    key = file.replace(workingDir, "").lower()
+    regexStr = '[0-9]{2,8}\.(png|jpg)'
+    match = re.search(regexStr, key)
+    key = key.replace(match.group(),"")
+    return key
+
+def browseAllFiles(path):
+    files = os.listdir(path)
+    files = sorted(files)
     uniques = []
-    for file in files:
-
-        split = file.split('_')
-        if split[0].startswith('.'):
-            continue
-        if split[0] not in uniques:
-            uniques.append(split[0])
-    return uniques
-
-def checkForMissingFiles():
-    files = os.listdir(workingDir)
-    missing = []
-    numbers = []
-    name = ''
-    zeroes = 4
-    extension = '.png'
     for file in files:
         if file.startswith('.'):
             continue
-        split = file.split('_')
-        split2 = split[-1].split('.')
-        number = split2[0]
-        extension = split2[1]
-        name = file.replace("_" + split[-1],"")
+        fullFilename = os.path.join(path, file)
+        if os.path.isfile(fullFilename):
+            array = breakdownFilePath(os.path.join(path, file))
+            key = keyForFile(fullFilename)
+            log("key = " + key)
+            if key in dict:
+                current = dict[key]
+                current.append(array)
+                dict[key] = current
+                log(array)
+                log(str(len(current)))
+            else:
+                dict[key] = [array]
 
-        zeroes = len(number)
-        numbers.append(int(number))
-
-    numbers = sorted(numbers)
-    #First lets check if files are files are missing
-    missingFrames = []
-    emptyFrames = []
-
-    renameDelta = numbers[0] - 1
-    checkFile = 1
-
-    if numbers[0] == 0:
-        renameDelta = 0
-        checkFile = 0
-    filesToDelete = []
-    for index in numbers:
-        rightNumber = index
-        if renameDelta != 0:
-            rightNumber = index - renameDelta
-            oldName = os.path.join(workingDir, name + '_' + str(index).zfill(zeroes) + '.' + extension)
-            newName = os.path.join(workingDir, name + '_' + str(rightNumber).zfill(zeroes) + '.' + extension)
-            os.rename(oldName, newName)
-        fileToCheck = os.path.join(workingDir, name + '_' + str(checkFile).zfill(zeroes) + '.' + extension)
-        if os.path.exists(fileToCheck):
-            #File exists
-            size = os.path.getsize(fileToCheck)
-            if size < 1000:
-                #we have a bad file lets delete it
-                emptyFrames.append(str(checkFile).zfill(zeroes))
-                filesToDelete.append(fileToCheck)
-                missingFrames.append(str(checkFile).zfill(zeroes))
         else:
-            missingFrames.append(str(checkFile).zfill(zeroes))
-        checkFile += 1
+            folder = os.path.join(path, file)
+            browseAllFiles(folder)
 
-    format = name + '_' + '%0' + str(zeroes) + 'd.' + extension
-    if len(missingFrames) > 0:
-        print("""
+def renameAllWithStartIndex(array):
+    index = 1
 
-        The following frames are MISSING!
-        Please re-run blender with overwrite turned off to complete the renders
-        Then run this program again!
-        """)
-        print('Empty files detected:')
-        print(emptyFrames)
-        deleteEmpty = input('Delete Empty zero byte frames? (y)es / (n)o) : ')
-        if (deleteEmpty == 'y' or deleteEmpty == 'Y'):
-            for file in filesToDelete:
-                print('RROY: deleting!')
-                os.remove(file)
-        print('Missing Files:')
-        print(missingFrames)
-        sample = input('Render a sample for now? (y)es / (n)o) : ')
-        if (sample == 'y' or sample == 'Y'):
-            vFrame = ' -vframes ' + str(int(missingFrames[0]) - 1) + ' '
-            createMovie(format, name + '-Partial', vFrame)
-        sys.exit()
+    for list in array:
+        log(list)
+        oldPath = os.path.join(list[0], list[1])
+        zeroes = len(list[3])
+        newName = list[2] + str(index).zfill(zeroes) + list[4]
+        newPath = os.path.join(list[0], newName)
+        log(oldPath)
+        log(newPath)
+        os.rename(oldPath, newPath)
+        index = index + 1
 
+def reportMissingFrames(array):
+    start = int(array[0][3])
+    last = int(array[-1][3])
+    index = start
+    for list in array:
+        number = int(list[3])
+        if index == number:
+            last = index
+            index = index + 1
+        else:
 
-    createMovie(format, name + '-Complete', '')
+            print("\n\n MISSING Frames at " + str(index) + "\n\n  Will create a sample instead \n\n")
+            break
+    return [start, last]
+    # for index in range(start, len(array)):
+    #     log("OK")
 
-def createMovie(format,outputName, vFrame):
-    framerate = input('What framerate do you want for the movie? : ')
-    print("""
-    Do you want the alpha channel in the video?
-    The background will be invisible, but the file size will be MUCH larger
-
-    """)
-    isAlpha = input('Use Alpha Channel? (y)es / (n)o) : ')
-    fileLocation = '~/Downloads/' + outputName + '.mp4'
+def createMovie(format, outputName, vFrame,framerate, isAlpha):
+    # fileLocation = '~/Downloads/' + outputName + '.mp4'
     fileInput = format
     if (isAlpha == 'y' or isAlpha == 'Y'):
-        command = 'ffmpeg -framerate ' + framerate + ' -i \'' + fileInput + '\'' + vFrame + ' -codec prores_ks -pix_fmt yuva444p10le -alpha_bits 16 -profile:v 4444 -f mov ' + fileLocation
+        command = 'ffmpeg -framerate ' + framerate + ' -i \'' + fileInput + '\'' + vFrame + ' -codec prores_ks -pix_fmt yuva444p10le -alpha_bits 16 -profile:v 4444 -f mov ' + outputName
         #ffmpeg -framerate $framerate -i $fileInput -codec prores_ks -pix_fmt yuva444p10le -alpha_bits 16 -profile:v 4444 -f mov $fullPath
     else:
-        command = 'ffmpeg -framerate ' + framerate + ' -i \'' + fileInput + '\'' + vFrame + ' -c:v libx264 -pix_fmt yuv420p ' + fileLocation
+        command = 'ffmpeg -framerate ' + framerate + ' -i \'' + fileInput + '\'' + vFrame + ' -c:v libx264 -pix_fmt yuv420p ' + outputName
     print(command)
     os.system(command)
 
@@ -129,13 +116,49 @@ def createMovie(format,outputName, vFrame):
 
     """)
 
+def workOnImageSet(array, framerate, isAlpha):
+    if len(array) == 0:
+        return
+    first = array[0]
 
-uniques = getAllUniqueFileNames()
-if len(uniques) == 0:
-    print("Directory is empty, quitting\n\n")
-elif len(uniques) == 1:
-    print(uniques[0] + ' Found Starting Program')
-    checkForMissingFiles()
-else:
-    #ask user which they want to work with shouldn't happen
-    sys.exit()
+    # First let's check for missing emptyFrames
+    range = reportMissingFrames(array)
+    print(array[0][1] + " working range [" + str(range[0]) + "," + str(range[1]) + "]" )
+
+    format = array[0][2] + '%0' + str(len(array[0][3])) + 'd' + array[0][4]
+    log(format)
+    outputName = array[0][2] + '[' + str(range[0]) + '-' + str(range[1]) + '].mp4'
+    outputName = os.path.join(destination, outputName)
+    log(outputName)
+    vFrame = ' -vframes ' + str(int(range[1])) + ' -start_number ' + str(range[0]) + ' '
+    log(vFrame)
+    os.chdir(array[0][0])
+
+    createMovie(format, outputName, vFrame, framerate, isAlpha)
+
+def beginCode():
+    os.system("clear")
+
+    framerate = input('What framerate do you want for the movie? : ')
+    print("""
+    Do you want the alpha channel in the video?
+    The background will be invisible, but the file size will be MUCH larger
+
+    """)
+    isAlpha = input('Use Alpha Channel? (y)es / (n)o) : ')
+
+    browseAllFiles(workingDir)
+    print(str(len(dict.keys())) + " Types of files found")
+    for key in dict.keys():
+        item = dict[key]
+        print(item[1])
+    print("\n\n\n")
+
+    for key in dict.keys():
+        array = dict[key]
+        workOnImageSet(array, framerate, isAlpha)
+
+
+
+
+beginCode()
