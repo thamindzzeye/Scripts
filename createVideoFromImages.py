@@ -1,3 +1,4 @@
+
 import os, subprocess, platform, sys
 from os import listdir
 from os.path import isfile, join
@@ -94,14 +95,14 @@ def reportMissingFrames(array):
     # for index in range(start, len(array)):
     #     log("OK")
 
-def createMovie(format, outputName, vFrame,framerate, isAlpha):
+def createMovie(format, outputName, startFrame, totalFrames,framerate, isAlpha):
     # fileLocation = '~/Downloads/' + outputName + '.mp4'
     fileInput = format
     if (isAlpha == 'y' or isAlpha == 'Y'):
-        command = 'ffmpeg -framerate ' + framerate + ' -i \'' + fileInput + '\'' + vFrame + ' -codec prores_ks -pix_fmt yuva444p10le -alpha_bits 16 -profile:v 4444 -f mov ' + outputName
+        command = 'ffmpeg -framerate ' + framerate + startFrame + ' -i \'' + fileInput + '\'' + totalFrames + ' -codec prores_ks -pix_fmt yuva444p10le -alpha_bits 16 -profile:v 4444 -f mov ' + '\'' + outputName + '\''
         #ffmpeg -framerate $framerate -i $fileInput -codec prores_ks -pix_fmt yuva444p10le -alpha_bits 16 -profile:v 4444 -f mov $fullPath
     else:
-        command = 'ffmpeg -framerate ' + framerate + ' -i \'' + fileInput + '\'' + vFrame + ' -c:v libx264 -pix_fmt yuv420p ' + outputName
+        command = 'ffmpeg -framerate ' + framerate + startFrame + ' -i \'' + fileInput + '\'' + totalFrames + ' -c:v libx264 -pix_fmt yuv420p ' + outputName
     print(command)
     os.system(command)
 
@@ -130,11 +131,13 @@ def workOnImageSet(array, framerate, isAlpha):
     outputName = array[0][2] + '[' + str(range[0]) + '-' + str(range[1]) + '].mp4'
     outputName = os.path.join(destination, outputName)
     log(outputName)
-    vFrame = ' -vframes ' + str(int(range[1])) + ' -start_number ' + str(range[0]) + ' '
+    vFrame = ' -vframes ' + str(int(range[1])) + ' '
+    startFrame = ' -start_number ' + str(range[0]) + ' '
     log(vFrame)
     os.chdir(array[0][0])
 
-    createMovie(format, outputName, vFrame, framerate, isAlpha)
+    createMovie(format, outputName, startFrame, vFrame, framerate, isAlpha)
+    # createMovie(format, outputName, startNumber, totalFrames,framerate, isAlpha)
 
 def beginCode():
     os.system("clear")
