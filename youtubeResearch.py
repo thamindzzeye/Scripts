@@ -21,6 +21,9 @@ channels = [{'name':'Undecided with Matt Ferrell', 'url':'https://www.youtube.co
             , {'name':'Freethink', 'url':'https://www.youtube.com/@freethink/videos'}
             , {'name':'Ziroth', 'url':'https://www.youtube.com/@ZirothTech/videos'}
             , {'name':'DW Planet A', 'url':'https://www.youtube.com/@DWPlanetA/videos'}
+            , {'name':'Tech for Luddites', 'url':'https://www.youtube.com/@TechforLudditesSira/videos'}
+            , {'name':'Subject Zero Science', 'url':'https://www.youtube.com/@SubjectZeroScience/videos'}
+            , {'name':'Real Engineering', 'url':'https://www.youtube.com/@RealEngineering/videos'}
             ]
 
 def log(str):
