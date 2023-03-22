@@ -71,14 +71,21 @@ def runReport(dict):
     content = getPage(url)
     subscribers = getSubscribersCount(content)
     regexStr = '{"label":[^}]+}'
+    regexId = '{"content":{"videoRenderer":{"videoId":".*?"'
     matches = re.findall(regexStr, content)
-
+    matchesIds = re.findall(regexId, content)
     data = []
     dataArray = [['Channel Name', 'Video Title', 'Days Since Post', 'Views']]
     averageViews = 0
     totalMatches = 0
     for match in matches:
+
         if ' by ' in match and ' views' in match:
+            vidId = ''
+            if len(matchesIds) > 0:
+                vidId = matchesIds.pop(0)
+                vidId = vidId.replace('{"content":{"videoRenderer":{"videoId":"','')
+                vidId = vidId.replace('\"','')
             totalMatches = totalMatches + 1
             match = match.replace('{"label":"','')
             match = match.replace('"}','')
@@ -98,7 +105,7 @@ def runReport(dict):
             duration = datePost[1] #TODO
             datePost = datePost[0]
             days = convertToDays(datePost)
-            row = [channelName, splitList[0].capitalize(), days, views]
+            row = [channelName, splitList[0].capitalize(),vidId, days, views]
             data.append(row)
             # data = data + channelName + ',' + splitList[0].capitalize() + ',' + str(days) + ',' + str(views) + '\n'
 
@@ -107,12 +114,12 @@ def runReport(dict):
     for row in data:
         row.append(str(subscribers))
         row.append(str(averageViews))
-        viewScore = round(row[3] / averageViews * 100) / 100
+        viewScore = round(row[4] / averageViews * 100) / 100
         row.append(str(viewScore))
-        subsScore = round(row[3] / subscribers * 100) / 100
+        subsScore = round(row[4] / subscribers * 100) / 100
         row.append(str(subsScore))
-        row[2] = str(row[2])
         row[3] = str(row[3])
+        row[4] = str(row[4])
     return data
 
 def createReport(data):
@@ -124,7 +131,7 @@ def createReport(data):
 
 
 
-data = [['Channel', 'Video Title', '# of Days', '# of Views', '# of Subs', 'Avg Views', 'Views/Avg', 'Views/Sub']]
+data = [['Channel', 'Video Title','Video Id', '# of Days', '# of Views', '# of Subs', 'Avg Views', 'Views/Avg', 'Views/Sub']]
 for channel in channels:
     nextData = runReport(channel)
 
