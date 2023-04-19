@@ -76,6 +76,7 @@ alias imageResearcher="python3 ~/Code/Scripts/GetImagesFromGoogle.py"
 alias updateAllScripts="python3 ~/Code/Scripts/updateAllScripts.py"
 alias testScript="python3 ~/Code/Scripts/test.py"
 alias createSampleVideo="python3 ~/Code/Scripts/createSampleVideos.py"
+alias checkinCheckout="python3 ~/Code/Scripts/checkinCheckoutProject.py"
 """
     copy2clip(aliasValues)
     print("""
