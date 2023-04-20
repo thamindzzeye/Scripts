@@ -80,11 +80,13 @@ def chooseAction(userDict):
 		ind = ind + 1
 	print('//////////////////////////////////////////////////////////////////')
 	print('\n\n - What would you Like to do? Select a Number only\n')
-	action = input('1. CHECK IN Existing Project I have Checked out\n2. CHECK OUT New Project\n\n\n')
+	action = input('1. CHECK IN Existing Project I have Checked out\n2. CHECK OUT Existing Project\n3. Start a NEW Project\n\n')
 	if action == '1':
 		takeActionCheckin(userDict)
 	elif action == '2':
 		takeActionCheckout(userDict)
+	elif action == '3':
+		takeActionStartNewProject(userDict)	
 	
 def checkoutDictForKey(key, userDict):
 	checkouts = userDict['checkouts']
@@ -116,9 +118,10 @@ def takeActionCheckin(userDict):
 	pathProjectAlexandria = os.path.join(pathAlexandria, projectType, project)
 	pathProjectLocal = os.path.join(pathProjects, projectType, project)
 	
-	rsyncString = "rsync -av '" + pathProjectLocal + "/' '" + pathProjectAlexandria + "'"
+	rsyncString = "rsync -av --delete --progress '" + pathProjectLocal + "/' '" + pathProjectAlexandria + "'"
 	os.system(rsyncString)
 	
+	os.system('clear')
 	print('\nSuccessfully Checked Back IN \n\n1. Just Saving but keep it checked out (Im still working)\n2. I want to remove the lock I am done, but keep my local copy (just in case)\n')
 	
 	isFinished = input('What would you Like to do (pick a number): ')
@@ -127,12 +130,12 @@ def takeActionCheckin(userDict):
 	elif isFinished == '2':
 		checkedOutFilePath = os.path.join(pathProjectAlexandria, 'CHECKED OUT.json')
 		os.remove(checkedOutFilePath)
+		checkedOutFilePath = os.path.join(pathProjectLocal, 'CHECKED OUT.json')
+		os.remove(checkedOutFilePath)
 		del checkouts[selection]
 		writeJsonToFile(userDict, pathUserData)
 		print('Project Updated to Alexandria & Checked in, others can now edit!')
 	
-	
-
 def takeActionCheckout(userDict):
 	print("///////////   Checkout Project   //////////////////////////////////////////////")
 	projectType = selectFolder(pathAlexandria)
@@ -145,9 +148,14 @@ def takeActionCheckout(userDict):
 	if not confirm == 'y':
 		sys.exit()
 	
-	pathProjectAlexandria = os.path.join(nextPath, project)
-	pathProjectLocal = os.path.join(pathProjects, projectType, project)
 	
+	performProjectCheckout(projectType, project)
+	
+
+def performProjectCheckout(projectType, project):
+	
+	pathProjectAlexandria = os.path.join(pathAlexandria, projectType, project)
+	pathProjectLocal = os.path.join(pathProjects, projectType, project)
 	key = projectType + '/' + project
 	
 	# let's check if is checked out
@@ -171,13 +179,66 @@ def takeActionCheckout(userDict):
 	checkoutDict["timestamp"] = timestamp
 	checkoutDict["user"] = userDict["name"]
 	
-	
-	rsyncString = "rsync -av '" + pathProjectAlexandria + "/' '" + pathProjectLocal + "'"
-	os.system(rsyncString)
+	#create checkout file first on alexandria before sync
 	checkoutFilePath = os.path.join(pathProjectAlexandria, 'CHECKED OUT.json')
 	writeJsonToFile(checkoutDict, checkoutFilePath)
 	writeJsonToFile(userDict, pathUserData)
+	
+	
+	rsyncString = "rsync -av --delete --progress '" + pathProjectAlexandria + "/' '" + pathProjectLocal + "'"
+	os.system(rsyncString)
+	
 	print('Successfully Checked OUT - No one else can edit this now')
+
+def takeActionStartNewProject(userDict):
+	projectType = selectFolder(pathAlexandria)
+	projectPath = os.path.join(pathAlexandria, projectType)
+	folders = os.listdir(projectPath)
+	folders.sort()
+	checker = re.compile('[a-zA-Z][0-9]{1,6}')
+	letterChecker = re.compile('[a-zA-z]')
+	numberChecker = re.compile('[0-9]{1,6}')
+	dataDict = {}
+	for folder in folders:
+		
+		result = checker.match(folder)
+		if result:
+			ans = result.group(0)
+			letter = letterChecker.match(ans)
+			letter = letter.group(0)
+			number = ans.replace(letter,"")
+			number = int(number)
+			currentMax = number
+			if letter in dataDict.keys():
+				currentMax = max(currentMax, dataDict[letter])
+			dataDict[letter] = currentMax
+	projectName = input('What do you want to name this project?\n\n').title()
+	print('\nWhich Prefix Do you Want to use?\n')
+	for key in dataDict.keys():
+		print(key + "{:03d}".format(dataDict[key] + 1) + ' - ' + projectName)
+	print('\nPlease Select the First LETTER of the prefix you want to use. example: M')
+	prefix = input('Prefix: ').upper()
+	if not prefix in dataDict.keys():
+		sys.exit()
+	baseProjectName = projectName
+	projectName = prefix + "{:03d}".format(dataDict[prefix] + 1) + ' - ' + projectName
+	pathNewProject = os.path.join(projectPath, projectName)
+	os.mkdir(pathNewProject)
+	templatePath = os.path.join(projectPath, 'TEMPLATE')
+	rsyncString = "rsync -av --progress '" + templatePath + "/' '" + pathNewProject + "'"
+	os.system(rsyncString)
+	fcpxOldPath = os.path.join(pathNewProject, 'Template.fcpbundle')
+	fcpxNewPath = os.path.join(pathNewProject, baseProjectName + '.fcpbundle')
+	os.rename(fcpxOldPath, fcpxNewPath)
+	
+	os.system('clear')
+	print('\nSuccessfully Created Project\n')
+	shouldCheckout = input('Do you Want to CHECK OUT ' + projectName + ' Now? (y/n)\n\n').lower()
+	if not shouldCheckout == 'y':
+		sys.exit()
+	
+	performProjectCheckout(projectType, projectName)
+
 
 #Start of Script
 userDict = {}
