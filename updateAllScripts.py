@@ -127,5 +127,5 @@ alias checkinCheckout="python3 ~/Code/Scripts/checkinCheckoutProject.py"
 
 os.system('clear')
 getFcpxPlugins()
-# getScripts()
-# updateAliases()
+getScripts()
+updateAliases()
