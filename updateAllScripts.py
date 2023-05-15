@@ -12,6 +12,34 @@ moviesPath = os.path.join(rootPath, 'Movies')
 os.chdir(downloadsPath)
 
 def getFcpxPlugins():
+	dropboxLocation = os.path.expanduser('~/Two Bit da Vinci Dropbox/Two Bit Media/Software/Final Cut Plugins')
+	finalCutLocation = os.path.expanduser('~/Movies/Motion Templates.localized')
+	print('Updating Final Cut Plugings...\n\n1. Please make sure Dropbox > Two Bit Media > Software > Final Cut Plugins is available offline\n2. make sure dropbox has sycned it and there is no other changes\n\n')
+	userInput = input('Ready? (y/n): ')
+	userInput = userInput.lower()
+	
+	if not userInput == 'y':
+		sys.exit()
+	
+	print('\n\nWhat would Like to do?\n\n1. Download the latest plugins\n2. Add New Plugins (Only for Juan)\n\n')
+	userInput = input('Selection (1 or 2): ')
+	
+	sourceDestination = dropboxLocation
+	targetDestination = finalCutLocation
+	
+	if userInput == '2':
+		userInput = input('JUAN ONLY, Enter Password: ')
+		if not userInput == '811':
+			print('Incorrect Password, Aborting')
+			sys.exit()
+		sourceDestination = finalCutLocation
+		targetDestination = dropboxLocation
+	
+	rsyncString = "rsync -av --delete --progress '" + sourceDestination + "/' '" + targetDestination + "'"
+	os.system(rsyncString)
+		
+
+def getFcpxPluginsOld():
     githubPath = os.path.join(downloadsPath, 'FcpxPlugins')
     origination = os.path.join(githubPath, 'Motion Templates.localized')
     destination = os.path.join(moviesPath, 'Motion Templates.localized')
@@ -99,5 +127,5 @@ alias checkinCheckout="python3 ~/Code/Scripts/checkinCheckoutProject.py"
 
 os.system('clear')
 getFcpxPlugins()
-getScripts()
-updateAliases()
+# getScripts()
+# updateAliases()
