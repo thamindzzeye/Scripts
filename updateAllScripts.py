@@ -37,6 +37,11 @@ def getFcpxPlugins():
 	
 	rsyncString = "rsync -av --delete --progress '" + sourceDestination + "/' '" + targetDestination + "'"
 	os.system(rsyncString)
+	
+	presetsSource = os.path.join(dropboxLocation, 'Presets')
+	presetsDestination = os.path.expathuser('~/Library/Application Support/ProApps/Effects Presets')
+	rsyncString = "rsync -av --delete --progress '" + presetsSource + "/' '" + presetsDestination + "'"
+	os.system(rsyncString)
 		
 
 def getFcpxPluginsOld():
