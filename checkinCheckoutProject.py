@@ -118,8 +118,14 @@ def takeActionCheckin(userDict):
 	pathProjectAlexandria = os.path.join(pathAlexandria, projectType, project)
 	pathProjectLocal = os.path.join(pathProjects, projectType, project)
 	
-	rsyncString = "rsync -av --delete --progress '" + pathProjectLocal + "/' '" + pathProjectAlexandria + "'"
-	os.system(rsyncString)
+	# lets find a list of all final cut projects to check in
+	allFiles = os.listdir(pathProjectLocal)
+	fcpxbundles = [f for f in allFiles if f.endswith('.fcpbundle')]
+	
+	for fcpxbundle in fcpxbundles:
+		rsyncString = "rsync -av --delete --progress '" + pathProjectLocal + '/' + fcpxbundle + "' '" + pathProjectAlexandria + "'"
+		os.system(rsyncString)
+	
 	
 	os.system('clear')
 	print('\nSuccessfully Checked Back IN \n\n1. Just Saving but keep it checked out (Im still working)\n2. I want to remove the lock I am done, but keep my local copy (just in case)\n')
@@ -158,6 +164,10 @@ def performProjectCheckout(projectType, project):
 	pathProjectLocal = os.path.join(pathProjects, projectType, project)
 	key = projectType + '/' + project
 	
+	allFiles = os.listdir(pathProjectAlexandria)
+	fcpxbundles = [f for f in allFiles if f.endswith('.fcpbundle')]
+
+	
 	# let's check if is checked out
 	checkedOutFilePath = os.path.join(pathProjectAlexandria, 'CHECKED OUT.json')
 	if os.path.exists(checkedOutFilePath):
@@ -179,14 +189,16 @@ def performProjectCheckout(projectType, project):
 	checkoutDict["timestamp"] = timestamp
 	checkoutDict["user"] = userDict["name"]
 	
-	#create checkout file first on alexandria before sync
+	#create checkout file both on alexandria and local
 	checkoutFilePath = os.path.join(pathProjectAlexandria, 'CHECKED OUT.json')
+	checkoutFilePathLocal = os.path.join(pathProjectLocal, 'CHECKED OUT.json')
 	writeJsonToFile(checkoutDict, checkoutFilePath)
+	writeJsonToFile(checkoutDict, checkoutFilePathLocal)
 	writeJsonToFile(userDict, pathUserData)
 	
-	
-	rsyncString = "rsync -av --delete --progress '" + pathProjectAlexandria + "/' '" + pathProjectLocal + "'"
-	os.system(rsyncString)
+	for fcpxbundle in fcpxbundles:
+		rsyncString = "rsync -av --delete --progress '" + pathProjectAlexandria + '/' + fcpxbundle + "' '" + pathProjectLocal + "'"
+		os.system(rsyncString)
 	
 	print('Successfully Checked OUT - No one else can edit this now')
 
