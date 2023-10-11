@@ -17,12 +17,11 @@ debug = True
 path = os.path.expanduser('~/Downloads/YTReport.csv')
 
 channels = [{'name':'Undecided with Matt Ferrell', 'url':'https://www.youtube.com/@UndecidedMF/videos'}
-            , {'name':'Just Have a Think', 'url':'https://www.youtube.com/justhaveathink/videos'}
-            , {'name':'Freethink', 'url':'https://www.youtube.com/@freethink/videos'}
-            , {'name':'Ziroth', 'url':'https://www.youtube.com/@ZirothTech/videos'}
-            , {'name':'DW Planet A', 'url':'https://www.youtube.com/@DWPlanetA/videos'}
-            , {'name':'Tech for Luddites', 'url':'https://www.youtube.com/@TechforLudditesSira/videos'}
-            , {'name':'Subject Zero Science', 'url':'https://www.youtube.com/@SubjectZeroScience/videos'}
+            , {'name':'Wendover Productions', 'url':'https://www.youtube.com/@Wendoverproductions/videos'}
+            , {'name':'Kyle Hill', 'url':'https://www.youtube.com/@kylehill/videos'}
+            , {'name':'Tom Scott', 'url':'https://www.youtube.com/@TomScottGo/videos'}
+            , {'name':'Veritasium', 'url':'https://www.youtube.com/@Veritasium/videos'}
+            , {'name':'Technology Connections', 'url':'https://www.youtube.com/@TechnologyConnections/videos'}
             , {'name':'Real Engineering', 'url':'https://www.youtube.com/@RealEngineering/videos'}
             ]
 
@@ -57,12 +56,13 @@ def getSubscribersCount(str):
 
 def convertToDays(str):
     splitUp = str.split(' ')
-    days = int(splitUp[0])
-    timePeriod = splitUp[1]
+    days = int(splitUp[1])
+    timePeriod = splitUp[2]
     if 'month' in timePeriod:
         days = days * 30
     if 'year' in timePeriod:
         days = days * 365
+	
     return days
 
 def runReport(dict):
@@ -133,6 +133,7 @@ def createReport(data):
 
 data = [['Channel', 'Video Title','Video Id', '# of Days', '# of Views', '# of Subs', 'Avg Views', 'Views/Avg', 'Views/Sub']]
 for channel in channels:
+    print(channel)
     nextData = runReport(channel)
 
     data = data + nextData
