@@ -16,6 +16,7 @@ workingDir = os.getcwd()
 pathProjects = os.path.expanduser('~/Projects')
 pathUserData = os.path.expanduser('~/Code/userData.json')
 pathAlexandria = '/Volumes/Public/Dropbox'
+pathThumbnails = '/Volumes/Public/Dropbox/Thumbnails'
 
 #Global Functions
 def initialize(userDict):
@@ -236,9 +237,16 @@ def takeActionStartNewProject(userDict):
 	projectName = prefix + "{:03d}".format(dataDict[prefix] + 1) + ' - ' + projectName
 	pathNewProject = os.path.join(projectPath, projectName)
 	os.mkdir(pathNewProject)
+	
 	templatePath = os.path.join(projectPath, 'TEMPLATE')
 	rsyncString = "rsync -av --progress '" + templatePath + "/' '" + pathNewProject + "'"
 	os.system(rsyncString)
+	
+	#also make folder in thumbnails
+	newThumbDir = os.path.join(pathThumbnails, projectType)
+	newThumbDir = os.path.join(newThumbDir, projectName)
+	os.mkdir(newThumbDir)
+	
 	fcpxOldPath = os.path.join(pathNewProject, 'Template.fcpbundle')
 	fcpxNewPath = os.path.join(pathNewProject, baseProjectName + '.fcpbundle')
 	os.rename(fcpxOldPath, fcpxNewPath)
