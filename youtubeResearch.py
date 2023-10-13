@@ -22,6 +22,11 @@ channels = [{'name':'Undecided with Matt Ferrell', 'url':'https://www.youtube.co
             , {'name':'Tom Scott', 'url':'https://www.youtube.com/@TomScottGo/videos'}
             , {'name':'Veritasium', 'url':'https://www.youtube.com/@Veritasium/videos'}
             , {'name':'Technology Connections', 'url':'https://www.youtube.com/@TechnologyConnections/videos'}
+            , {'name':'ColdFusion', 'url':'https://www.youtube.com/@ColdFusion/videos'}
+            , {'name':'Practical Engineering', 'url':'https://www.youtube.com/@PracticalEngineeringChannel/videos'}
+            , {'name':'SmarterEveryDay', 'url':'https://www.youtube.com/@smartereveryday/videos'}
+            , {'name':'Top Luxury', 'url':'https://www.youtube.com/@Top_Luxury/videos'}
+            , {'name':'The B1M', 'url':'https://www.youtube.com/@theb1m/videos'}
             , {'name':'Real Engineering', 'url':'https://www.youtube.com/@RealEngineering/videos'}
             ]
 
@@ -54,15 +59,17 @@ def getSubscribersCount(str):
         return int(subNum)
     return int(subStr)
 
-def convertToDays(str):
-    splitUp = str.split(' ')
+def convertToDays(dataStr):
+	
+    splitUp = dataStr.split(' ')
     days = int(splitUp[1])
     timePeriod = splitUp[2]
+    if 'week' in timePeriod:
+    	days = days * 7
     if 'month' in timePeriod:
         days = days * 30
     if 'year' in timePeriod:
         days = days * 365
-	
     return days
 
 def runReport(dict):
@@ -107,10 +114,14 @@ def runReport(dict):
             days = convertToDays(datePost)
             row = [channelName, splitList[0].capitalize(),vidId, days, views]
             data.append(row)
+
             # data = data + channelName + ',' + splitList[0].capitalize() + ',' + str(days) + ',' + str(views) + '\n'
+            
+            #normalizing for time
+            
+            
 
     averageViews = round((averageViews / totalMatches) * 1000)
-
     for row in data:
         row.append(str(subscribers))
         row.append(str(averageViews))
@@ -118,6 +129,8 @@ def runReport(dict):
         row.append(str(viewScore))
         subsScore = round(row[4] / subscribers * 100) / 100
         row.append(str(subsScore))
+        timeNormalized = round(viewScore / row[3] * 10000) / 100
+        row.append(str(timeNormalized))
         row[3] = str(row[3])
         row[4] = str(row[4])
     return data
@@ -131,7 +144,7 @@ def createReport(data):
 
 
 
-data = [['Channel', 'Video Title','Video Id', '# of Days', '# of Views', '# of Subs', 'Avg Views', 'Views/Avg', 'Views/Sub']]
+data = [['Channel', 'Video Title','Video Id', '# of Days', '# of Views', '# of Subs', 'Avg Views', 'Views/Avg', 'Views/Sub', 'Score/Time']]
 for channel in channels:
     print(channel)
     nextData = runReport(channel)
