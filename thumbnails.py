@@ -6,7 +6,7 @@ from pathlib import Path
 import re
 from datetime import datetime
 import shutil
-
+import time
 
 
 #Global Variables
@@ -17,32 +17,68 @@ workingDir = os.getcwd()
 pathProjects = os.path.expanduser('~/Projects')
 pathUserData = os.path.expanduser('~/Code/userData.json')
 pathAlexandria = '/Volumes/Public/Dropbox'
+pathLastUpdatedData = '/Volumes/Public/Dropbox/Thumbnails/Data/lastUpdatedData.json'
+pathProjectsRoot = '/Volumes/Public/Dropbox/Thumbnails/'
+pathMontage = '/Volumes/Public/Dropbox/Thumbnails/Previews'
+folderSkipArray = ['previews', 'data', 'helpers', 'template', '.ds_store']
 
-#Global Functions
-def initialize(userDict):
-	os.system('clear')
-	username = ''
-	if not os.path.exists(pathUserData):
-		print('\n\n\nfirst Time User ... Lets get setup\n\n\n')
-		name = input('What is your name? ')
-		username = name
-		userDict['name'] = name
-		userDict['checkouts'] = []
-		writeJsonToFile(userDict, pathUserData)
-		return userDict
-	else:
-		userDict = readJsonFile(pathUserData)
-		return userDict
-
-def readJsonFile(path):
-	jsonData=open(path)
-	data = json.load(jsonData)
-	jsonData.close()
+def readFileToDict(filePath):
+	if not os.path.exists(pathLastUpdatedData):
+		data = {}
+		writeDictToFile(data, pathLastUpdatedData)
+	with open(filePath) as file:
+		data = json.load(file)
 	return data
+    
+def writeDictToFile(dictionary, filePath):
+    with open(filePath, 'w') as file:
+        json.dump(dictionary, file)
+        
 
-def writeJsonToFile(dataDict, filePath):
-	with open(filePath, 'w', encoding='utf-8') as f:
-		json.dump(dataDict, f, ensure_ascii=False, indent=4)
+def updateLastModifiedDatesInFolder(folderPath, dateDict, channel):
+	projects = os.listdir(folderPath)
+	for project in projects:
+		if project.lower() in folderSkipArray:
+			continue
+		
+		projectPath = os.path.join(folderPath, project)
+		projectKey = channel + '/' + project
+		files = os.listdir(projectPath)
+		for file in files:
+			filepath = os.path.join(projectPath, file)
+			if file.lower().endswith('.jpg'):
+				fileModified = os.path.getmtime(filepath)
+				
+				lastModified = 0.0
+				if projectKey in dateDict.keys():
+					lastModified = dateDict[projectKey]
+				if fileModified > lastModified:
+					print('New File Detected: ' + project + ' / ' + file)
+					dateDict[projectKey] = fileModified
+					createMontageForDirectory(projectPath, project)
+		
+		
+def createMontageForDirectory(path, name):
+	inputStr = '"' + path + '/*.jpg"'
+	outputStr = os.path.join(pathMontage, name + '.jpg')
+	outputStr = '"' + outputStr + '"'
+	cmd = "montage -label '%t' -pointsize 45 -fill white -stroke white -strokewidth 2 " + inputStr + " -background '#000000' -geometry 640x360+5+5 -tile 3x  " + outputStr
+	os.system(cmd)
+
+def takeActionCreateMontages():
+	lastModifiedDict = readFileToDict(pathLastUpdatedData)
+	channels = os.listdir(pathProjectsRoot)
+	for channel in channels:
+		if channel.lower() in folderSkipArray:
+			continue
+		if not os.path.isdir(os.path.join(pathProjectsRoot, channel)):
+			continue
+		print('\n\nStarting On Channel: ' + channel)
+		updateLastModifiedDatesInFolder(os.path.join(pathProjectsRoot, channel), lastModifiedDict, channel)
+	
+	writeDictToFile(lastModifiedDict, pathLastUpdatedData)
+	print("completed thumbnail montages\n\n\n")
+		
 
 def selectFolder(path):
 	folders = files = os.listdir(path)
@@ -71,17 +107,20 @@ def dateToString(date):
 def stringToDate(string):
 	return datetime.strptime(string, '%m-%d-%Y %H:%M:%S')
 	
-def chooseAction(userDict):
+def chooseAction():
 
 	print('\n\n - What would you Like to do? Select a Number only\n')
-	action = input('1. Move Thumbnails To New Location\n2. Create Thumbnail Montage\n\n')
+	action = input('1. Create new Thumbnail Request\n2. Sync New Requests\n3. Create Thumbnail Montages\n4. Move Thumbnails To New Location\n\n')
 	if action == '1':
-		moveThumbnailsToNewLocation()
+		takeActionNewThumbnailRequest()
 	elif action == '2':
-		takeActionCheckout(userDict)
+		print('ok')
+	elif action == '3':
+		takeActionCreateMontages()
+	elif action == '4':
+		moveThumbnailsToNewLocation()
 
-		
-	
+
 def checkoutDictForKey(key, userDict):
 	checkouts = userDict['checkouts']
 	for checkout in checkouts:
@@ -91,169 +130,17 @@ def checkoutDictForKey(key, userDict):
 	checkouts.append(checkout)
 	return checkout
 
+def takeActionNewThumbnailRequest():
+	print("new thumbnail request")
+def takeActionSyncThumbnailRequests():
+	print("sync thumbnail reqs")
+	
 def takeActionThumbnailMontage(userDict):
 	pathVideos = '/Volumes/Public/Dropbox/Two Bit da Vinci Projects'
 	projectPath = selectFolder(pathVideos)
 	nextPath = os.path.join(pathAlexandria, projectPath)
 	nextPath = os.path.join(nextPath, 'Thumbnails')
 	print(nextPath)
-	
-	# magick montage *.jpg -background '#000000' -geometry 640x360+5+5 -tile 3x4  montage/montage.jpg
-	
-
-def takeActionCheckin(userDict):
-	name = userDict['name']
-	checkouts = userDict['checkouts']
-	print('\n Here are the projects you currently have checked out //////////////////////////////\n')
-	ind = 0
-	for checkout in checkouts:
-		print('-------------------------------------------------\n' + str(ind) + '. ' + checkout["projectType"] + ' | ' + checkout["projectName"] + '\n   ' + checkout["timestamp"] + '\n\n\n')
-		ind = ind + 1
-	
-	selection = input('Which would you like to check in? (number): ')
-	selection = int(selection)
-	if selection >= len(checkouts):
-		print("That number is invalid. Try again!")
-		sys.exit()
-	checkout = checkouts[selection]
-	projectType = checkout["projectType"]
-	project = checkout["projectName"]
-	
-	pathProjectAlexandria = os.path.join(pathAlexandria, projectType, project)
-	pathProjectLocal = os.path.join(pathProjects, projectType, project)
-	
-	# lets find a list of all final cut projects to check in
-	allFiles = os.listdir(pathProjectLocal)
-	fcpxbundles = [f for f in allFiles if f.endswith('.fcpbundle')]
-	
-	for fcpxbundle in fcpxbundles:
-		rsyncString = "rsync -av --delete --progress '" + pathProjectLocal + '/' + fcpxbundle + "' '" + pathProjectAlexandria + "'"
-		os.system(rsyncString)
-	
-	
-	os.system('clear')
-	print('\nSuccessfully Checked Back IN \n\n1. Just Saving but keep it checked out (Im still working)\n2. I want to remove the lock I am done, but keep my local copy (just in case)\n')
-	
-	isFinished = input('What would you Like to do (pick a number): ')
-	if isFinished == '1':
-		print('Project Updated to Alexandria, but still checked out!')
-	elif isFinished == '2':
-		checkedOutFilePath = os.path.join(pathProjectAlexandria, 'CHECKED OUT.json')
-		os.remove(checkedOutFilePath)
-		checkedOutFilePath = os.path.join(pathProjectLocal, 'CHECKED OUT.json')
-		os.remove(checkedOutFilePath)
-		del checkouts[selection]
-		writeJsonToFile(userDict, pathUserData)
-		print('Project Updated to Alexandria & Checked in, others can now edit!')
-	
-def takeActionCheckout(userDict):
-	print("///////////   Checkout Project   //////////////////////////////////////////////")
-	projectType = selectFolder(pathAlexandria)
-	nextPath = os.path.join(pathAlexandria, projectType)
-	project = selectFolder(nextPath)
-	
-	print('\n\nYou have selected:\n' + projectType + ' / ' + project + '\n')
-	confirm = input('Is this correct? (y/n): ')
-	
-	if not confirm == 'y':
-		sys.exit()
-	
-	
-	performProjectCheckout(projectType, project)
-	
-
-def performProjectCheckout(projectType, project):
-	
-	pathProjectAlexandria = os.path.join(pathAlexandria, projectType, project)
-	pathProjectLocal = os.path.join(pathProjects, projectType, project)
-	key = projectType + '/' + project
-	
-	allFiles = os.listdir(pathProjectAlexandria)
-	fcpxbundles = [f for f in allFiles if f.endswith('.fcpbundle')]
-
-	
-	# let's check if is checked out
-	checkedOutFilePath = os.path.join(pathProjectAlexandria, 'CHECKED OUT.json')
-	if os.path.exists(checkedOutFilePath):
-		currentCheckoutDict = readJsonFile(checkedOutFilePath)
-		os.system('clear')
-		print("\nTHIS PROJECT IS Already Checked out by " + currentCheckoutDict["user"] + '. \n This file was checked out at ' + currentCheckoutDict["timestamp"])
-		print("\nPlease ask " + currentCheckoutDict["user"] + ' to check this project IN before checking it out yourself')
-		sys.exit()
-	
-	
-	if not os.path.exists(pathProjectLocal):
-		os.makedirs(pathProjectLocal)
-	
-	timestamp = dateToString(datetime.now())
-	checkoutDict = checkoutDictForKey(key, userDict)
-	checkoutDict["key"] = key
-	checkoutDict["projectType"] = projectType
-	checkoutDict["projectName"] = project
-	checkoutDict["timestamp"] = timestamp
-	checkoutDict["user"] = userDict["name"]
-	
-	#create checkout file both on alexandria and local
-	checkoutFilePath = os.path.join(pathProjectAlexandria, 'CHECKED OUT.json')
-	checkoutFilePathLocal = os.path.join(pathProjectLocal, 'CHECKED OUT.json')
-	writeJsonToFile(checkoutDict, checkoutFilePath)
-	writeJsonToFile(checkoutDict, checkoutFilePathLocal)
-	writeJsonToFile(userDict, pathUserData)
-	
-	for fcpxbundle in fcpxbundles:
-		rsyncString = "rsync -av --delete --progress '" + pathProjectAlexandria + '/' + fcpxbundle + "' '" + pathProjectLocal + "'"
-		os.system(rsyncString)
-	
-	print('Successfully Checked OUT - No one else can edit this now')
-
-def takeActionStartNewProject(userDict):
-	projectType = selectFolder(pathAlexandria)
-	projectPath = os.path.join(pathAlexandria, projectType)
-	folders = os.listdir(projectPath)
-	folders.sort()
-	checker = re.compile('[a-zA-Z][0-9]{1,6}')
-	letterChecker = re.compile('[a-zA-z]')
-	numberChecker = re.compile('[0-9]{1,6}')
-	dataDict = {}
-	for folder in folders:
-		
-		result = checker.match(folder)
-		if result:
-			ans = result.group(0)
-			letter = letterChecker.match(ans)
-			letter = letter.group(0)
-			number = ans.replace(letter,"")
-			number = int(number)
-			currentMax = number
-			if letter in dataDict.keys():
-				currentMax = max(currentMax, dataDict[letter])
-			dataDict[letter] = currentMax
-	projectName = input('What do you want to name this project?\n\n').title()
-	print('\nWhich Prefix Do you Want to use?\n')
-	for key in dataDict.keys():
-		print(key + "{:03d}".format(dataDict[key] + 1) + ' - ' + projectName)
-	print('\nPlease Select the First LETTER of the prefix you want to use. example: M')
-	prefix = input('Prefix: ').upper()
-	if not prefix in dataDict.keys():
-		sys.exit()
-	baseProjectName = projectName
-	projectName = prefix + "{:03d}".format(dataDict[prefix] + 1) + ' - ' + projectName
-	pathNewProject = os.path.join(projectPath, projectName)
-	os.mkdir(pathNewProject)
-	templatePath = os.path.join(projectPath, 'TEMPLATE')
-	rsyncString = "rsync -av --progress '" + templatePath + "/' '" + pathNewProject + "'"
-	os.system(rsyncString)
-	fcpxOldPath = os.path.join(pathNewProject, 'Template.fcpbundle')
-	fcpxNewPath = os.path.join(pathNewProject, baseProjectName + '.fcpbundle')
-	os.rename(fcpxOldPath, fcpxNewPath)
-	
-	os.system('clear')
-	print('\nSuccessfully Created Project\n')
-	shouldCheckout = input('Do you Want to CHECK OUT ' + projectName + ' Now? (y/n)\n\n').lower()
-	if not shouldCheckout == 'y':
-		sys.exit()
-	
-	performProjectCheckout(projectType, projectName)
 
 def moveThumbnailsToNewLocation():
 	oldLocationBase = '/Volumes/Public/Dropbox/'
@@ -272,10 +159,7 @@ def moveThumbnailsToNewLocation():
 			newPathBase = os.path.join(newTypeFolderBase, folder)
 			moveAllFilesFromTo(thumbnailPath, newPathBase)
 			os.rmdir(thumbnailPath)
-				
-			
-			
-		
+					
 def moveAllFilesFromTo(oldRoot, newRoot):
 	print('old: ' + oldRoot)
 	print('new: ' + newRoot)
@@ -288,7 +172,6 @@ def moveAllFilesFromTo(oldRoot, newRoot):
 		new = os.path.join(newRoot, file)
 		shutil.move(old, new)
 	
-	
 def findThumbnailsAtPath(path):
 	allFiles = os.listdir(path)
 	for file in allFiles:
@@ -296,9 +179,8 @@ def findThumbnailsAtPath(path):
 			print('thumbnail! ' + file)
 
 #Start of Script
-userDict = {}
-userDict = initialize(userDict)
-chooseAction(userDict)
+
+chooseAction()
 
 
 

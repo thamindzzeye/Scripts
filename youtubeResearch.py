@@ -27,6 +27,7 @@ channels = [{'name':'Undecided with Matt Ferrell', 'url':'https://www.youtube.co
             , {'name':'SmarterEveryDay', 'url':'https://www.youtube.com/@smartereveryday/videos'}
             , {'name':'Top Luxury', 'url':'https://www.youtube.com/@Top_Luxury/videos'}
             , {'name':'The B1M', 'url':'https://www.youtube.com/@theb1m/videos'}
+            , {'name':'Mustard', 'url':'https://www.youtube.com/@MustardChannel/videos'}
             , {'name':'Real Engineering', 'url':'https://www.youtube.com/@RealEngineering/videos'}
             ]
 
