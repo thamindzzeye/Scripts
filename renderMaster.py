@@ -14,8 +14,8 @@ debug = False
 
 #Global Paths
 workingDir = os.getcwd()
-pathProjects = '/Volumes/Public/Blender/Projects'
-pathActiveProjects = '/Volumes/Scratch/Renders/Active Projects'
+pathProjects = ['/Volumes/Public/Blender/Projects', Path('A:/Blender/Projects')]
+pathActiveProjects = ['/Volumes/Scratch/Renders/Active Projects', Path('R:/Active Projects')]
 # pathProjects = os.path.expanduser('~/Projects')
 # pathUserData = os.path.expanduser('~/Code/userData.json')
 # pathAlexandria = '/Volumes/Public/Dropbox'
@@ -23,6 +23,10 @@ pathActiveProjects = '/Volumes/Scratch/Renders/Active Projects'
 # pathProjectsRoot = '/Volumes/Public/Dropbox/Thumbnails/'
 # pathMontage = '/Volumes/Public/Dropbox/Thumbnails/Previews'
 # folderSkipArray = ['previews', 'data', 'helpers', 'template', '.ds_store']
+
+def systemPath(pathArray):
+	index = int(platform.system() == 'Windows')
+	return pathArray[index]
 
 def readFileToDict(filePath):
 	if not os.path.exists(pathLastUpdatedData):
@@ -67,19 +71,6 @@ def createMontageForDirectory(path, name):
 	cmd = "montage -label '%t' -pointsize 45 -fill white -stroke white -strokewidth 2 " + inputStr + " -background '#000000' -geometry 640x360+5+5 -tile 3x  " + outputStr
 	os.system(cmd)
 
-def takeActionCreateMontages():
-	lastModifiedDict = readFileToDict(pathLastUpdatedData)
-	channels = os.listdir(pathProjectsRoot)
-	for channel in channels:
-		if channel.lower() in folderSkipArray:
-			continue
-		if not os.path.isdir(os.path.join(pathProjectsRoot, channel)):
-			continue
-		print('\n\nStarting On Channel: ' + channel)
-		updateLastModifiedDatesInFolder(os.path.join(pathProjectsRoot, channel), lastModifiedDict, channel)
-	
-	writeDictToFile(lastModifiedDict, pathLastUpdatedData)
-	print("completed thumbnail montages\n\n\n")
 
 def selectFile(path, ext):
 	files = []
@@ -160,7 +151,7 @@ def chooseAction():
 		takeActionCleanBlend1Files()
 
 def takeActionCleanBlend1Files():
-	filesToDelete, fileSizes = findFiles(pathProjects, '.blend1')
+	filesToDelete, fileSizes = findFiles(systemPath(pathProjects), '.blend1')
 	if len(filesToDelete) == 0:
 		print("No Blend1 Files So you are good to go! GoodBye!")
 		sys.exit()
