@@ -203,8 +203,8 @@ def checkoutDictForKey(key, userDict):
 def takeActionNewActiveRender():
 	print("Let's Pick which render you want to start")
 	
-	projectName = selectFolder(pathProjects)
-	projectPath = os.path.join(pathProjects, projectName)
+	projectName = selectFolder(systemPath(pathProjects))
+	projectPath = os.path.join(systemPath(pathProjects), projectName)
 
 	blendFile = selectFile(projectPath, '.blend')
 	print('You Selected: ' + blendFile + '\n\n')
@@ -215,30 +215,12 @@ def takeActionNewActiveRender():
 	print("lets go")
 	fullBlendPath = os.path.join(projectPath, blendFile)
 	print(fullBlendPath)
-	destinationPath = os.path.join(pathActiveProjects, blendFile)
+	destinationPath = os.path.join(systemPath(pathActiveProjects), blendFile)
 	print(destinationPath)
 	if os.path.exists(destinationPath):
 		print('Error, you already have a file with the same name in active projects!\n\nAborting')
 		sys.exit()
 	shutil.copy(fullBlendPath, destinationPath)
-
-def moveThumbnailsToNewLocation():
-	oldLocationBase = '/Volumes/Public/Dropbox/'
-	newLocationBase = '/Volumes/Public/Dropbox/Thumbnails/'
-	typeFolder = selectFolder(oldLocationBase)
-	oldTypeFolderBase = os.path.join(oldLocationBase, typeFolder)
-	newTypeFolderBase = os.path.join(newLocationBase, typeFolder)
-	if not os.path.exists(newTypeFolderBase):
-		os.makedirs(newTypeFolderBase)
-	allFolders = os.listdir(oldTypeFolderBase)
-	for folder in allFolders:
-		fullPath = os.path.join(oldTypeFolderBase, folder)
-		thumbnailPath = os.path.join(fullPath, 'Thumbnails')
-		
-		if os.path.exists(thumbnailPath):
-			newPathBase = os.path.join(newTypeFolderBase, folder)
-			moveAllFilesFromTo(thumbnailPath, newPathBase)
-			os.rmdir(thumbnailPath)
 					
 def moveAllFilesFromTo(oldRoot, newRoot):
 	print('old: ' + oldRoot)
