@@ -9,6 +9,77 @@ from datetime import datetime
 import shutil
 import time
 
+
+#folder watcher class
+class Watcher(object):
+    running = True
+    refresh_delay_secs = 1
+
+    # Constructor
+    def __init__(self, watch_file, call_func_on_change=None, *args, **kwargs):
+        self._cached_stamp = 0
+        self.filename = watch_file
+        self.call_func_on_change = call_func_on_change
+        self.args = args
+        self.kwargs = kwargs
+
+    # Look for changes
+    def look(self):
+        stamp = os.stat(self.filename).st_mtime
+        if stamp != self._cached_stamp:
+            self._cached_stamp = stamp
+            # File has changed, so do something...
+            print('File changed')
+            if self.call_func_on_change is not None:
+                self.call_func_on_change(*self.args, **self.kwargs)
+
+    # Keep watching in a loop        
+    def watch(self):
+        while self.running: 
+            try: 
+                # Look for changes
+                time.sleep(self.refresh_delay_secs) 
+                self.look() 
+            except KeyboardInterrupt: 
+                print('\nDone') 
+                break 
+            except FileNotFoundError:
+                # Action on file not found
+                pass
+            except: 
+                print('Unhandled error: %s' % sys.exc_info()[0])
+                
+#timer class
+
+class RepeatedTimer(object):
+    def __init__(self, interval, function, *args, **kwargs):
+        self._timer     = None
+        self.interval   = interval
+        self.function   = function
+        self.args       = args
+        self.kwargs     = kwargs
+        self.is_running = False
+        self.start()
+
+    def _run(self):
+        self.is_running = False
+        self.start()
+        self.function(*self.args, **self.kwargs)
+
+    def start(self):
+        if not self.is_running:
+            self._timer = Timer(self.interval, self._run)
+            self._timer.start()
+            self.is_running = True
+
+    def stop(self):
+        self._timer.cancel()
+        self.is_running = False
+
+# Call this function each time a change happens
+def custom_action(text):
+    print(text)
+
 #Global Variables
 debug = False
 renderNodeActive = False
@@ -21,9 +92,10 @@ def getComputerName():
 #Global Paths
 pathProjects = ['/Volumes/Public/Blender/Projects', 'A:\\Blender\\Projects']
 pathActiveProjects = ['/Volumes/Scratch/Renders/Active Projects', 'R:\\Active Projects']
-pathActiveProjectsData = ['/Volumes/Scratch/Renders/Data/activeProjects.json', Path('R:\\Data\\activeProjects.json')]
+pathActiveProjectsData = ['/Volumes/Scratch/Renders/Data/activeProjects.json', 'R:\\Data\\activeProjects.json']
 computerName = getComputerName()
-pathActiveNodeData = ['/Volumes/Scratch/Renders/Data/' + computerName + ' .json', Path('R:\\Data\\' + computerName + ' .json')]
+pathActiveNodeData = ['/Volumes/Scratch/Renders/Data/Nodes/' + computerName + '.json', 'R:\\Data\\Nodes\\' + computerName + '.json']
+pathLocalRenderRoot = ['', 'C:\\Renders']
 
 def systemPath(pathArray):
 	index = int(platform.system() == 'Windows')
@@ -120,46 +192,8 @@ def readJsonFile(path):
 def writeJsonToFile(dataDict, filePath):
 	with open(filePath, 'w', encoding='utf-8') as f:
 		json.dump(dataDict, f, ensure_ascii=False, indent=4)
-	
-def chooseAction():
-	os.system('clear')
-	print('Hello, I am ' + computerName + '!\n\n')
-	print('\n\n - What would you Like to do? Select a Number only\n')
-	action = input('''
-	1. Create new Active Render
-	2. Monitor Progress (Only for Delphi!)
-	3. Clean blend1 files\n\n''')
-	
-	if action == '1':
-		takeActionNewActiveRender()
-	elif action == '2':
-		print('ok 3')
-	elif action == '3':
-		takeActionCleanBlend1Files()
 
-def takeActionCleanBlend1Files():
-	filesToDelete, fileSizes = findFiles(systemPath(pathProjects), '.blend1')
-	if len(filesToDelete) == 0:
-		print("No Blend1 Files So you are good to go! GoodBye!")
-		sys.exit()
-	
-	
-	totalSize = 0.0
-	for i, (file, size) in enumerate(zip(filesToDelete, fileSizes)):
-		print('file: ' + file + ' size: ' + str(size))
-		totalSize = totalSize + size
-	print('\n\n I found the ^^ These blend1 files that should be deleted.\n\n')
-	print('Total Size: ' + str(int(totalSize)) + ' MB\n\n')
-	
-	action = input('Delete Files? (Y)es / (N)o: ')
-	if action.lower() == 'y':
-		print("delete in progress")
-		for file in filesToDelete:
-			os.remove(file)
-		
-	else:
-		print("Cancelled")
-	
+
 def findFiles(root, ext):
     # initialize two empty lists to store the paths and sizes
     paths = []
@@ -178,58 +212,6 @@ def findFiles(root, ext):
     # return the lists of paths and sizes
     return paths, sizes
 
-def takeActionNewActiveRender():
-	print("Let's Pick which render you want to start")
-	
-	projectName = selectFolder(systemPath(pathProjects))
-	projectPath = os.path.join(systemPath(pathProjects), projectName)
-
-	blendFile = selectFile(projectPath, '.blend')
-	print('You Selected: ' + blendFile + '\n\n')
-	action = input('Is this Correct? (Y)es \ (N)o: ')
-	if not action.lower() == 'y':
-		print('\n\nOk Cancelling this operation, Goodbye!\n\n\n')
-		sys.exit()
-	os.system('clear')
-	fullBlendPath = os.path.join(projectPath, blendFile)
-	destinationPath = os.path.join(systemPath(pathActiveProjects), blendFile)
-	
-	#lets create the meta data
-	startFrame = input('What is the START frame? \nUsually 0 or 1: ')
-	endFrame = input('What is the END frame?: ')
-	print('file output PNG')
-	print('video FPS 30 frame / sec\n\n')
-	blenderVersion = input('What is the blender version that should be used for rendering?\nExample 4.0 - This must match the exact version of blender found at C:\Program Files\Blender Foundation\nVersion: ')
-	
-	renderDict = {'startFrame': startFrame, 'endFrame': endFrame, 'blenderVersion': blenderVersion, 'projectName': blendFile, 'path': fullBlendPath, 'status': 'In Progress'}
-	
-	currentProjects = []
-	if os.path.exists(systemPath(pathActiveProjectsData)):
-		currentProjects = readJsonFile(systemPath(pathActiveProjectsData))
-	
-	for project in currentProjects:
-		if project['path'].lower() == fullBlendPath.lower():
-			print('This project is already in active projects aborting...')
-			sys.exit()
-	
-	if len(currentProjects) == 0:
-		print('\n\n You Have No Active Projects, Adding ' + blendFile + ' now!')
-		currentProjects.append(renderDict)
-	else:
-		print('\n\n You have the following active projects:\n')
-		listItemsInArray(currentProjects)
-		index = int(input('Where should we add this project?\n0 = top of the queue: '))
-		if index > len(currentProjects):
-			index = len(currentProjects)
-		currentProjects.insert(index, renderDict)
-	
-	#moving into active folder
-	shutil.copy(fullBlendPath, destinationPath)
-	
-	#writing the json file
-	print('\n\nHere are the active projects:')
-	listItemsInArray(currentProjects)
-	writeJsonToFile(currentProjects, systemPath(pathActiveProjectsData))
 
 def listItemsInArray(currentProjects):
 	index = 0
@@ -251,37 +233,82 @@ def moveAllFilesFromTo(oldRoot, newRoot):
 		shutil.move(old, new)
 
 ## ----------------------------------------Render Node Functions! ---------------------------------------- ## 
+def startRendering(renderDict):
+	print("rendering!")
 
-def testFunc(args):
-	print(args)
-
-def takeActionStartRenderNode():
-	activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
-	os.system('clear')
-	print('Joining render node!\n\nActive Renders...\n')
-	listItemsInArray(activeRenders)
-	rt = RepeatedTimer(10, testFunc, "World")
+def ping(args):
+	t = time.time()
+	print(str(t))
+	strTime = time.strftime("%Y-%m-%d %-I:%M:%S %p", time.localtime(t))
+	print(strTime)
+	nodeData = {}
+	if os.path.exists(systemPath(pathActiveNodeData)):
+		nodeData = readJsonFile(systemPath(pathActiveNodeData))
+	else:
+		nodeData['NodeName'] = computerName
+	nodeData['ping'] = t
+	
+	#lets check if we're rendering yet
+	if not renderNodeActive:
+		activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
+		if len(activeRenders) > 0:
+			#we have an active render we should start!
+			render = activeRenders[0]
+			startRendering(render)
+			nodeData['ActiveProject'] = render['projectName']
+		else:
+			nodeData['ActiveProject'] = ''
 			
+	
+	writeJsonToFile(nodeData, systemPath(pathActiveNodeData))
+
+    
 
 
 #Start of Script
 
-chooseAction()
+#First let's create any needed folders
+if not platform.system() == 'Windows':
+	print('Render Node is only made for windows PCs with NVidia GPUs!')
+	sys.exit()
+
+#create the local folders
+localRoot = systemPath(pathLocalRenderRoot)
+localData = os.path.join(localRoot, 'Data')
+localProject = os.path.join(localRoot, 'Projects')
+if not os.path.exists(localRoot):
+	os.makedirs(localRoot)
+if not os.path.exists(localData):
+	os.makedirs(localData)
+if not os.path.exists(localProjects):
+	os.makedirs(localProjects)
+	
+
+activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
+os.system('clear')
+print(computerName + ' Reporting for Duty & Ready to Render!!\n\nActive Renders...\n')
+listItemsInArray(activeRenders)
+ping('start')
+# rt = RepeatedTimer(60, ping, "ping")
+
+with open("stdout.txt","wb") as out, open("stderr.txt","wb") as err:
+	subprocess.Popen("ls",stdout=out,stderr=err)
 
 
-watch_file = 'my_file.txt'
 
-# watcher = Watcher(watch_file)  # simple
-watcher = Watcher(watch_file, custom_action, text='yes, changed')  # also call custom action function
-watcher.watch()  # start the watch going
-
-
-
+#watch_file = 'my_file.txt'
+#
+## watcher = Watcher(watch_file)  # simple
+#watcher = Watcher(watch_file, custom_action, text='yes, changed')  # also call custom action function
+#watcher.watch()  # start the watch going
 
 
 
 
 
+
+
+with open("stdout.txt","wb") as out, open("stderr.txt","wb") as err: subprocess.Popen("ls",stdout=out,stderr=err)
 
 
 
