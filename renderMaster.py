@@ -1,5 +1,6 @@
 
 import os, subprocess, platform, sys, json
+from enum import Enum
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
@@ -17,10 +18,18 @@ def getComputerName():
 	name = platform.node()
 	parts = name.split('.')
 	return parts[0]
+	
+class Status(Enum):
+    PAUSED = 1
+    ACTIVE = 2
+    COMPLETE = 3
+    VIDEO_COMPLETE = 4
+    READY_TO_DELETE = 5
 
 #Global Paths
 pathProjects = ['/Volumes/Public/Blender/Projects', 'A:\\Blender\\Projects']
 pathActiveProjects = ['/Volumes/Scratch/Renders/Active Projects', 'R:\\Active Projects']
+pathActiveRenders = ['/Volumes/Scratch/Renders/Active Renders', 'R:\\Active Renders']
 pathActiveProjectsData = ['/Volumes/Scratch/Renders/Data/activeProjects.json', Path('R:\\Data\\activeProjects.json')]
 computerName = getComputerName()
 pathActiveNodeData = ['/Volumes/Scratch/Renders/Data/' + computerName + ' .json', Path('R:\\Data\\' + computerName + ' .json')]
@@ -133,7 +142,7 @@ def chooseAction():
 	if action == '1':
 		takeActionNewActiveRender()
 	elif action == '2':
-		print('ok 3')
+		takeActionMonitorProgress()
 	elif action == '3':
 		takeActionCleanBlend1Files()
 
@@ -201,15 +210,18 @@ def takeActionNewActiveRender():
 	print('video FPS 30 frame / sec\n\n')
 	blenderVersion = input('What is the blender version that should be used for rendering?\nExample 4.0 - This must match the exact version of blender found at C:\Program Files\Blender Foundation\nVersion: ')
 	
-	renderDict = {'startFrame': startFrame, 'endFrame': endFrame, 'blenderVersion': blenderVersion, 'projectName': blendFile, 'path': fullBlendPath, 'status': 'In Progress'}
+	renderDict = {'startFrame': startFrame, 'endFrame': endFrame, 'blenderVersion': blenderVersion, 'projectName': blendFile, 'path': fullBlendPath, 'status': Status.ACTIVE.name}
 	
 	currentProjects = []
 	if os.path.exists(systemPath(pathActiveProjectsData)):
 		currentProjects = readJsonFile(systemPath(pathActiveProjectsData))
 	
+	projectExists = False
 	for project in currentProjects:
 		if project['path'].lower() == fullBlendPath.lower():
-			print('This project is already in active projects aborting...')
+			projectExists = True
+			project['status'] = Status.ACTIVE.name
+			print('This project is already in active projects...')
 			sys.exit()
 	
 	if len(currentProjects) == 0:
@@ -223,9 +235,27 @@ def takeActionNewActiveRender():
 			index = len(currentProjects)
 		currentProjects.insert(index, renderDict)
 	
-	#moving into active folder
-	shutil.copy(fullBlendPath, destinationPath)
+	renderFolderAddon = blendFile.split('.')[0]
+	renderDestination = os.path.join(systemPath(pathActiveRenders), renderFolderAddon)
+	print(renderDestination)
+	if os.path.exists(renderDestination):
+		existingFiles = os.listdir(renderDestination)
+		if not len(existingFiles) == 0:
+			print(existingFiles)
+			print('There is already a folder in the render path with files in it.')
+			print('\n\n\n Remove Them before starting?')
+			ans = input('Delete Existing Files? (Y)es / (N)o: ')
+			if ans.lower() == 'y':
+				for file in existingFiles:
+					os.remove(os.path.join(renderDestination, file))
+		
+	else:
+		os.mkdir(renderDestination)
 	
+	#moving into active folder
+	rsyncCommand = "rsync -av --progress '" + fullBlendPath + "' '" + destinationPath + "'"
+	print('RYNC Command: ' + rsyncCommand)
+	os.system(rsyncCommand)
 	#writing the json file
 	print('\n\nHere are the active projects:')
 	listItemsInArray(currentProjects)
@@ -250,30 +280,21 @@ def moveAllFilesFromTo(oldRoot, newRoot):
 		new = os.path.join(newRoot, file)
 		shutil.move(old, new)
 
-## ----------------------------------------Render Node Functions! ---------------------------------------- ## 
+## ----------------------------------------Render Monitoring Functions! ---------------------------------------- ## 
 
-def testFunc(args):
-	print(args)
+def takeActionMonitorProgress():
+	watch_file = 'my_file.txt'
 
-def takeActionStartRenderNode():
-	activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
-	os.system('clear')
-	print('Joining render node!\n\nActive Renders...\n')
-	listItemsInArray(activeRenders)
-	rt = RepeatedTimer(10, testFunc, "World")
-			
-
+	# watcher = Watcher(watch_file)  # simple
+	watcher = Watcher(watch_file, custom_action, text='yes, changed')  # also call custom action function
+	watcher.watch()  # start the watch going
 
 #Start of Script
 
 chooseAction()
 
 
-watch_file = 'my_file.txt'
 
-# watcher = Watcher(watch_file)  # simple
-watcher = Watcher(watch_file, custom_action, text='yes, changed')  # also call custom action function
-watcher.watch()  # start the watch going
 
 
 
