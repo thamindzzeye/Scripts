@@ -1,5 +1,6 @@
 
 import os, subprocess, platform, sys, json
+from enum import Enum
 from os import listdir
 from os.path import isfile, join
 from pathlib import Path
@@ -9,6 +10,12 @@ from datetime import datetime
 import shutil
 import time
 
+class Status(Enum):
+    PAUSED = 1
+    ACTIVE = 2
+    COMPLETE = 3
+    VIDEO_COMPLETE = 4
+    READY_TO_DELETE = 5
 
 #folder watcher class
 class Watcher(object):
@@ -49,36 +56,6 @@ class Watcher(object):
             except: 
                 print('Unhandled error: %s' % sys.exc_info()[0])
                 
-#timer class
-
-class RepeatedTimer(object):
-    def __init__(self, interval, function, *args, **kwargs):
-        self._timer     = None
-        self.interval   = interval
-        self.function   = function
-        self.args       = args
-        self.kwargs     = kwargs
-        self.is_running = False
-        self.start()
-
-    def _run(self):
-        self.is_running = False
-        self.start()
-        self.function(*self.args, **self.kwargs)
-
-    def start(self):
-        if not self.is_running:
-            self._timer = Timer(self.interval, self._run)
-            self._timer.start()
-            self.is_running = True
-
-    def stop(self):
-        self._timer.cancel()
-        self.is_running = False
-
-# Call this function each time a change happens
-def custom_action(text):
-    print(text)
 
 #Global Variables
 debug = False
@@ -92,14 +69,26 @@ def getComputerName():
 #Global Paths
 pathProjects = ['/Volumes/Public/Blender/Projects', 'A:\\Blender\\Projects']
 pathActiveProjects = ['/Volumes/Scratch/Renders/Active Projects', 'R:\\Active Projects']
+pathActiveRenders = ['/Volumes/Scratch/Renders/Active Renders', 'R:\\Active Renders']
 pathActiveProjectsData = ['/Volumes/Scratch/Renders/Data/activeProjects.json', 'R:\\Data\\activeProjects.json']
 computerName = getComputerName()
 pathActiveNodeData = ['/Volumes/Scratch/Renders/Data/Nodes/' + computerName + '.json', 'R:\\Data\\Nodes\\' + computerName + '.json']
 pathLocalRenderRoot = ['', 'C:\\Renders']
+pathLocalRenderProjects = ['', 'C:\\Renders\\Projects']
+activeFrame = -1
+
+blenderProcess = subprocess.run('', capture_output=True, shell=True)
 
 def systemPath(pathArray):
 	index = int(platform.system() == 'Windows')
-	return pathArray[index]
+	path = pathArray[index]
+	return path
+
+def linuxPath(path):
+	path = path.replace('\\','/')
+	parts = path.split(':')
+	path = '/cygdrive/' + parts[0] + parts[1]
+	return path
 
 def updateLastModifiedDatesInFolder(folderPath, dateDict, channel):
 	projects = os.listdir(folderPath)
@@ -216,7 +205,7 @@ def findFiles(root, ext):
 def listItemsInArray(currentProjects):
 	index = 0
 	for project in currentProjects:
-		print(str(index) + '. ' + project['projectName'])
+		print(str(index) + '. ' + project['blendName'])
 		index = index + 1
 	print('\n')
 					
@@ -234,13 +223,73 @@ def moveAllFilesFromTo(oldRoot, newRoot):
 
 ## ----------------------------------------Render Node Functions! ---------------------------------------- ## 
 def startRendering(renderDict):
-	print("rendering!")
+	print("rendering: " + renderDict['blendName'])
+	renderNodeActive = True
+	localRoot = systemPath(pathLocalRenderRoot)
+	localData = os.path.join(localRoot, 'Data')
+	logPath = os.path.join(localData, 'logs.txt')
+	errorsPath = os.path.join(localData, 'errors.txt')
+
+	#first lets rsync the project to our local location
+	sourceFile = os.path.join(systemPath(pathActiveProjects), renderDict['blendName'])
+	destinationFile = os.path.join(systemPath(pathLocalRenderProjects), renderDict['blendName'])
+	sourceFileX = linuxPath(sourceFile)
+	destinationFileX = linuxPath(destinationFile)
+	rsyncCmd = "rsync -av --progress '" + sourceFileX + "' '" + destinationFileX + "'"
+	print('RSYNC Command: ' + rsyncCmd)
+	subprocess.run(["rsync", "-a", "--progress", sourceFileX, destinationFileX], shell=True)
+
+	blenderProgramPath = 'C:\\Program Files\\Blender Foundation\\Blender '+ renderDict['blenderVersion'] +'\\blender.exe'
+	if not os.path.exists(blenderProgramPath):
+		print('\n\n#####-------------------------------Blender Version Not Installed!------------------------------------------####\n Please install before you can render this scene')
+		print(blenderProgramPath)
+		sys.exit()
+	else:
+		print('Correct Blender Version Detected')
+		print(blenderProgramPath)
+
+
+	frames = ' -s ' + renderDict['startFrame'] + ' -e ' + renderDict['endFrame'] + ' '
+
+	fileFolder = renderDict['blendName'].split('.')[0]
+	framePath = os.path.join(systemPath(pathActiveRenders), fileFolder)
+	framePath = os.path.join(framePath, 'frame_####')
+
+	blenderCmd = '& "' + blenderProgramPath +'" -b "' + destinationFile + '" -o "' + framePath + '" -E CYCLES -- --cycles-device CUDA -F PNG' + '"' + frames
+	print(blenderCmd)
+	#let's create the render command
+	# & "C:\Program Files\Blender Foundation\Blender 4.0\blender.exe" -b "R:\Active Projects\B-29 In Flight.blend" -o "R:\Active Renders\B-29 In Flight\frame_####" -a -- --cycles-device CUDA  -F PNG
+	
+	with open(logPath,"wb") as out, open(errorsPath,"wb") as err:
+		print('starting')
+		myargs = [
+		blenderProgramPath,
+		"-b",
+		destinationFile,
+		"-o",
+		framePath,
+		"-E",
+		"CYCLES",
+		"-a",
+		"--",
+		"--cycles-device CUDA",
+		"-F",
+		"PNG"
+		]
+		process = subprocess.Popen(myargs,stdout=out,stderr=err, shell=True)
+		process.wait()
+		print('render: complete')
+		renderNodeActive = False
+	
+	print(blenderProcess.stdout)
+	
+
+
 
 def ping(args):
 	t = time.time()
-	print(str(t))
-	strTime = time.strftime("%Y-%m-%d %-I:%M:%S %p", time.localtime(t))
-	print(strTime)
+	strTime = time.strftime("%Y-%m-%d %I:%M:%S %p", time.localtime(t))
+	print('ping: ' + strTime)
 	nodeData = {}
 	if os.path.exists(systemPath(pathActiveNodeData)):
 		nodeData = readJsonFile(systemPath(pathActiveNodeData))
@@ -248,22 +297,20 @@ def ping(args):
 		nodeData['NodeName'] = computerName
 	nodeData['ping'] = t
 	
-	#lets check if we're rendering yet
+	#lets check if we're rendering yet'
+	shouldRender = False
 	if not renderNodeActive:
 		activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
 		if len(activeRenders) > 0:
 			#we have an active render we should start!
 			render = activeRenders[0]
-			startRendering(render)
+			shouldRender = True
 			nodeData['ActiveProject'] = render['projectName']
 		else:
 			nodeData['ActiveProject'] = ''
-			
-	
 	writeJsonToFile(nodeData, systemPath(pathActiveNodeData))
-
-    
-
+	if shouldRender:
+		startRendering(render)
 
 #Start of Script
 
@@ -275,7 +322,7 @@ if not platform.system() == 'Windows':
 #create the local folders
 localRoot = systemPath(pathLocalRenderRoot)
 localData = os.path.join(localRoot, 'Data')
-localProject = os.path.join(localRoot, 'Projects')
+localProjects = os.path.join(localRoot, 'Projects')
 if not os.path.exists(localRoot):
 	os.makedirs(localRoot)
 if not os.path.exists(localData):
@@ -285,14 +332,15 @@ if not os.path.exists(localProjects):
 	
 
 activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
-os.system('clear')
+os.system('cls')
 print(computerName + ' Reporting for Duty & Ready to Render!!\n\nActive Renders...\n')
 listItemsInArray(activeRenders)
-ping('start')
-# rt = RepeatedTimer(60, ping, "ping")
 
-with open("stdout.txt","wb") as out, open("stderr.txt","wb") as err:
-	subprocess.Popen("ls",stdout=out,stderr=err)
+
+while True:
+	ping('')
+	time.sleep(122.0)    
+
 
 
 
@@ -303,12 +351,6 @@ with open("stdout.txt","wb") as out, open("stderr.txt","wb") as err:
 #watcher.watch()  # start the watch going
 
 
-
-
-
-
-
-with open("stdout.txt","wb") as out, open("stderr.txt","wb") as err: subprocess.Popen("ls",stdout=out,stderr=err)
 
 
 

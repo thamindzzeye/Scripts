@@ -210,7 +210,7 @@ def takeActionNewActiveRender():
 	print('video FPS 30 frame / sec\n\n')
 	blenderVersion = input('What is the blender version that should be used for rendering?\nExample 4.0 - This must match the exact version of blender found at C:\Program Files\Blender Foundation\nVersion: ')
 	
-	renderDict = {'startFrame': startFrame, 'endFrame': endFrame, 'blenderVersion': blenderVersion, 'projectName': blendFile, 'path': fullBlendPath, 'status': Status.ACTIVE.name}
+	renderDict = {'startFrame': startFrame, 'endFrame': endFrame, 'blenderVersion': blenderVersion, 'projectName': projectName, 'blendName': blendFile, 'path': fullBlendPath, 'status': Status.ACTIVE.name}
 	
 	currentProjects = []
 	if os.path.exists(systemPath(pathActiveProjectsData)):
@@ -264,7 +264,7 @@ def takeActionNewActiveRender():
 def listItemsInArray(currentProjects):
 	index = 0
 	for project in currentProjects:
-		print(str(index) + '. ' + project['projectName'])
+		print(str(index) + '. ' + project['blendName'])
 		index = index + 1
 	print('\n')
 					
