@@ -33,6 +33,7 @@ pathActiveRenders = ['/Volumes/Scratch/Renders/Active Renders', 'R:\\Active Rend
 pathActiveProjectsData = ['/Volumes/Scratch/Renders/Data/activeProjects.json', Path('R:\\Data\\activeProjects.json')]
 computerName = getComputerName()
 pathActiveNodeData = ['/Volumes/Scratch/Renders/Data/' + computerName + ' .json', Path('R:\\Data\\' + computerName + ' .json')]
+pathProjectAnalytics = ['/Volumes/Scratch/Renders/Data/Projects', Path('R:\\Data\\Projects')]
 
 def systemPath(pathArray):
 	index = int(platform.system() == 'Windows')
@@ -204,13 +205,13 @@ def takeActionNewActiveRender():
 	destinationPath = os.path.join(systemPath(pathActiveProjects), blendFile)
 	
 	#lets create the meta data
-	startFrame = input('What is the START frame? \nUsually 0 or 1: ')
-	endFrame = input('What is the END frame?: ')
+	startFrame = input('Start Frame (usually 0 or 1): ')
+	endFrame = input('End Frame: ')
 	print('file output PNG')
 	print('video FPS 30 frame / sec\n\n')
 	blenderVersion = input('What is the blender version that should be used for rendering?\nExample 4.0 - This must match the exact version of blender found at C:\Program Files\Blender Foundation\nVersion: ')
 	
-	renderDict = {'startFrame': startFrame, 'endFrame': endFrame, 'blenderVersion': blenderVersion, 'projectName': projectName, 'blendName': blendFile, 'path': fullBlendPath, 'status': Status.ACTIVE.name}
+	renderDict = {'blenderVersion': blenderVersion, 'projectName': projectName, 'blendName': blendFile, 'path': fullBlendPath, 'status': Status.ACTIVE.name, 'startFrame': startFrame, 'endFrame': endFrame}
 	
 	currentProjects = []
 	if os.path.exists(systemPath(pathActiveProjectsData)):
@@ -282,12 +283,57 @@ def moveAllFilesFromTo(oldRoot, newRoot):
 
 ## ----------------------------------------Render Monitoring Functions! ---------------------------------------- ## 
 
-def takeActionMonitorProgress():
-	watch_file = 'my_file.txt'
+def updateMonitoringData():
+	analyticsRootPath = systemPath(pathProjectAnalytics)
+	activeProjects = readJsonFile(systemPath(pathActiveProjectsData))
+	for project in activeProjects:
+		createAnalyticsDataForProject(project)
+	print('Analytics Complete')
 
-	# watcher = Watcher(watch_file)  # simple
-	watcher = Watcher(watch_file, custom_action, text='yes, changed')  # also call custom action function
-	watcher.watch()  # start the watch going
+def createAnalyticsDataForProject(projDict):
+	print('Starting Analytics for: ' + projDict['blendName'])
+	startFrame = int(projDict['startFrame'])
+	endFrame = int(projDict['endFrame'])
+	
+	#first let's check if we have a render folder
+	blendFile = projDict['blendName']
+	blendFolder = blendFile.split('.')[0]
+	framesFolder = systemPath(pathActiveRenders)
+	framesFolder = os.path.join(framesFolder, blendFolder)
+	dataDict = {}
+	if os.path.exists(framesFolder):
+		#Exists so let's see what frames are found
+		createFileAttributesDictForFolder(framesFolder)
+		
+			
+	else:
+		#There's no folder so its not active all frames missing
+		print('else')
+	
+#Format - Frame - RenderNodeName - RenderTime - Filesize - CreatedDate
+
+def createFileAttributesDictForFolder(folder):
+	data = {}
+	with os.scandir(folder) as files:
+		for file in files:
+			info = file.stat()
+# 			os.stat_result(st_mode=33216, st_ino=1443055845590940478, st_dev=905969667, st_nlink=1, st_uid=501, st_gid=20, st_size=7036437, st_atime=1700447668, st_mtime=1700447722, st_ctime=1700447722)
+			created = datetime.fromtimestamp(info.st_mtime).strftime('%Y-%m-%d %-I:%M %p')
+			filesize = str(round(info.st_size/1000000, 2)) + ' MB'
+			frame = int(file.name.replace('frame_','').replace('.png', ''))
+			
+			data[frame] = ['', '', filesize, created]
+	
+	print(data)
+	sys.exit()
+		
+
+def takeActionMonitorProgress():
+	
+	print('Monitoring Renders - In Progress')
+	while True:
+		updateMonitoringData()
+		time.sleep(60.0)  
 
 #Start of Script
 

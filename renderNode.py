@@ -248,14 +248,12 @@ def startRendering(renderDict):
 		print('Correct Blender Version Detected')
 		print(blenderProgramPath)
 
-
 	frames = ' -s ' + renderDict['startFrame'] + ' -e ' + renderDict['endFrame'] + ' '
 
 	fileFolder = renderDict['blendName'].split('.')[0]
 	framePath = os.path.join(systemPath(pathActiveRenders), fileFolder)
 	framePath = os.path.join(framePath, 'frame_####')
 
-	blenderCmd = '& "' + blenderProgramPath +'" -b "' + destinationFile + '" -o "' + framePath + '" -E CYCLES -- --cycles-device CUDA -F PNG' + '"' + frames
 	print(blenderCmd)
 	#let's create the render command
 	# & "C:\Program Files\Blender Foundation\Blender 4.0\blender.exe" -b "R:\Active Projects\B-29 In Flight.blend" -o "R:\Active Renders\B-29 In Flight\frame_####" -a -- --cycles-device CUDA  -F PNG
@@ -282,21 +280,8 @@ def startRendering(renderDict):
 		renderNodeActive = False
 	
 	print(blenderProcess.stdout)
-	
-
-
 
 def ping(args):
-	t = time.time()
-	strTime = time.strftime("%Y-%m-%d %I:%M:%S %p", time.localtime(t))
-	print('ping: ' + strTime)
-	nodeData = {}
-	if os.path.exists(systemPath(pathActiveNodeData)):
-		nodeData = readJsonFile(systemPath(pathActiveNodeData))
-	else:
-		nodeData['NodeName'] = computerName
-	nodeData['ping'] = t
-	
 	#lets check if we're rendering yet'
 	shouldRender = False
 	if not renderNodeActive:
@@ -340,17 +325,3 @@ listItemsInArray(activeRenders)
 while True:
 	ping('')
 	time.sleep(122.0)    
-
-
-
-
-#watch_file = 'my_file.txt'
-#
-## watcher = Watcher(watch_file)  # simple
-#watcher = Watcher(watch_file, custom_action, text='yes, changed')  # also call custom action function
-#watcher.watch()  # start the watch going
-
-
-
-
-
