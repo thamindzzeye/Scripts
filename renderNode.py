@@ -254,7 +254,6 @@ def startRendering(renderDict):
 	framePath = os.path.join(systemPath(pathActiveRenders), fileFolder)
 	framePath = os.path.join(framePath, 'frame_####')
 
-	print(blenderCmd)
 	#let's create the render command
 	# & "C:\Program Files\Blender Foundation\Blender 4.0\blender.exe" -b "R:\Active Projects\B-29 In Flight.blend" -o "R:\Active Renders\B-29 In Flight\frame_####" -a -- --cycles-device CUDA  -F PNG
 	
@@ -284,6 +283,7 @@ def startRendering(renderDict):
 def ping(args):
 	#lets check if we're rendering yet'
 	shouldRender = False
+	nodeData = {}
 	if not renderNodeActive:
 		activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
 		if len(activeRenders) > 0:
