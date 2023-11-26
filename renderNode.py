@@ -9,6 +9,7 @@ import re
 from datetime import datetime
 import shutil
 import time
+from concurrent.futures import ThreadPoolExecutor as Pool
 
 class Status(Enum):
     PAUSED = 1
@@ -300,6 +301,26 @@ def ping(args):
 #Start of Script
 
 #First let's create any needed folders
+# wait for the process completion asynchronously
+
+def renderProcess():
+	print('begin rendering')
+	time.sleep(10)
+	print('done')
+def callback(future):
+    if future.exception() is not None:
+        print("got exception: %s" % future.exception())
+    else:
+        print("process returned %d" % future.result())
+
+# print("begin waiting")
+# pool = Pool(max_workers=1)
+# f = pool.submit(subprocess.call, "sleep 2; echo done", shell=True)
+# f.add_done_callback(callback)
+# pool.shutdown(wait=False) # no .submit() calls after that point
+# print("continue waiting asynchronously")
+# sys.exit()
+
 if not platform.system() == 'Windows':
 	print('Render Node is only made for windows PCs with NVidia GPUs!')
 	sys.exit()
@@ -314,14 +335,28 @@ if not os.path.exists(localData):
 	os.makedirs(localData)
 if not os.path.exists(localProjects):
 	os.makedirs(localProjects)
-	
+
+updateScriptsBeforeProceeding()
 
 activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
 os.system('cls')
 print(computerName + ' Reporting for Duty & Ready to Render!!\n\nActive Renders...\n')
 listItemsInArray(activeRenders)
 
+def updateScriptsBeforeProceeding():
+	localFile = 'C:\\Code\\Scripts\\renderNode.py'
+	remoteFile = 'R:\\Scripts\\renderNode.py'
+	localModified = os.path.getmtime(localFile)
+	remoteModified = os.path.getmtime(remoteFile)
+	if not remoteModified == localModified:
+		subprocess.run(["rsync", "-a", "--progress", linuxPath(remoteFile), linuxPath(localFile)], shell=True)
+		print('There was a change in the render script file, it has been updated. \nPlease run the Render Node again!\n----------------------------Exiting-----------------------------------')
+		sys.exit()
+
 
 while True:
 	ping('')
 	time.sleep(122.0)    
+
+
+print('test')
