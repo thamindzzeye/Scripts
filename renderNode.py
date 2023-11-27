@@ -17,50 +17,12 @@ class Status(Enum):
     COMPLETE = 3
     VIDEO_COMPLETE = 4
     READY_TO_DELETE = 5
-
-#folder watcher class
-class Watcher(object):
-    running = True
-    refresh_delay_secs = 1
-
-    # Constructor
-    def __init__(self, watch_file, call_func_on_change=None, *args, **kwargs):
-        self._cached_stamp = 0
-        self.filename = watch_file
-        self.call_func_on_change = call_func_on_change
-        self.args = args
-        self.kwargs = kwargs
-
-    # Look for changes
-    def look(self):
-        stamp = os.stat(self.filename).st_mtime
-        if stamp != self._cached_stamp:
-            self._cached_stamp = stamp
-            # File has changed, so do something...
-            print('File changed')
-            if self.call_func_on_change is not None:
-                self.call_func_on_change(*self.args, **self.kwargs)
-
-    # Keep watching in a loop        
-    def watch(self):
-        while self.running: 
-            try: 
-                # Look for changes
-                time.sleep(self.refresh_delay_secs) 
-                self.look() 
-            except KeyboardInterrupt: 
-                print('\nDone') 
-                break 
-            except FileNotFoundError:
-                # Action on file not found
-                pass
-            except: 
-                print('Unhandled error: %s' % sys.exc_info()[0])
                 
 
 #Global Variables
 debug = False
-renderNodeActive = False
+currentRenderDict = {}
+renderNodeActive: bool = False
 
 def getComputerName():
 	name = platform.node()
@@ -222,29 +184,38 @@ def moveAllFilesFromTo(oldRoot, newRoot):
 		new = os.path.join(newRoot, file)
 		shutil.move(old, new)
 
-## ----------------------------------------Render Node Functions! ---------------------------------------- ## 
-def startRendering(renderDict):
-	print("rendering: " + renderDict['blendName'])
-	renderNodeActive = True
+## --------------------------------------------------------------------------------------------------------------------------------------- ##
+## -------------------------------------------------- Render Node Functions! ------------------------------------------------------------- ##
+## --------------------------------------------------------------------------------------------------------------------------------------- ##
+
+def getBlenderLogPaths():
 	localRoot = systemPath(pathLocalRenderRoot)
 	localData = os.path.join(localRoot, 'Data')
 	logPath = os.path.join(localData, 'logs.txt')
 	errorsPath = os.path.join(localData, 'errors.txt')
+	return logPath, errorsPath
 
+def startRendering(renderDict):
+	print("rendering: " + renderDict['blendName'])
+	
+	logPath, errorsPath = getBlenderLogPaths()
+	if os.path.exists(logPath):
+		os.remove(logPath)
+	if os.path.exists(errorsPath):
+		os.remove(errorsPath)
+	
 	#first lets rsync the project to our local location
 	sourceFile = os.path.join(systemPath(pathActiveProjects), renderDict['blendName'])
 	destinationFile = os.path.join(systemPath(pathLocalRenderProjects), renderDict['blendName'])
 	sourceFileX = linuxPath(sourceFile)
 	destinationFileX = linuxPath(destinationFile)
-	rsyncCmd = "rsync -av --progress '" + sourceFileX + "' '" + destinationFileX + "'"
-	print('RSYNC Command: ' + rsyncCmd)
 	subprocess.run(["rsync", "-a", "--progress", sourceFileX, destinationFileX], shell=True)
 
 	blenderProgramPath = 'C:\\Program Files\\Blender Foundation\\Blender '+ renderDict['blenderVersion'] +'\\blender.exe'
 	if not os.path.exists(blenderProgramPath):
 		print('\n\n#####-------------------------------Blender Version Not Installed!------------------------------------------####\n Please install before you can render this scene')
 		print(blenderProgramPath)
-		sys.exit()
+		return
 	else:
 		print('Correct Blender Version Detected')
 		print(blenderProgramPath)
@@ -256,8 +227,6 @@ def startRendering(renderDict):
 	framePath = os.path.join(framePath, 'frame_####')
 
 	#let's create the render command
-	# & "C:\Program Files\Blender Foundation\Blender 4.0\blender.exe" -b "R:\Active Projects\B-29 In Flight.blend" -o "R:\Active Renders\B-29 In Flight\frame_####" -a -- --cycles-device CUDA  -F PNG
-	
 	with open(logPath,"wb") as out, open(errorsPath,"wb") as err:
 		print('starting')
 		myargs = [
@@ -274,14 +243,61 @@ def startRendering(renderDict):
 		"-F",
 		"PNG"
 		]
-		process = subprocess.Popen(myargs,stdout=out,stderr=err, shell=True)
-		process.wait()
-		print('render: complete')
-		renderNodeActive = False
-	
-	print(blenderProcess.stdout)
+		updateRenderStatus(True)
+		global pool
+		f = pool.submit(subprocess.call, myargs,stdout=out,stderr=err, shell=True)
+		f.add_done_callback(renderDidFinish)
+		pool.shutdown(wait=False)
 
-def ping(args):
+def updateRenderStatus(status):
+	global renderNodeActive
+	if not status  == renderNodeActive:
+		renderNodeActive = status
+		strVal = "Active"
+		if not status:
+			strVal = "NOT Active"
+		print('=====================================================================================\nRender Status Changed: ' + strVal + '\n=====================================================================================')
+
+def renderDidFinish(args):
+	updateRenderStatus(False)
+	global pool
+	pool = Pool(max_workers=1)
+
+def cleanupBadFrames():
+	logPath, errorsPath = getBlenderLogPaths()
+	if not os.path.exists(logPath):
+		return
+
+	lines = '' #DELETE ME
+	with open(logPath, 'r') as file:
+		lines = file.readlines()[-30:]
+		for lineData in reversed(lines):
+			line = lineData.strip()
+			regex = 'Fra:.{1,4}\s'
+			matches = re.findall(regex, line)
+			if len(matches) > 0:
+				match = matches[0]
+				match = match.replace('Fra:','')
+				frameNum = int(match)
+				if 'blendName' in currentRenderDict.keys():
+					blendName = currentRenderDict['blendName']
+					folder = blendName.split('.')[0]
+					fullPath = os.path.join(systemPath(pathActiveRenders), folder)
+					fullPath = os.path.join(fullPath, 'frame_' + str(frameNum).zfill(4) + '.png')
+					if os.path.exists(fullPath):
+						frameSize = os.stat(fullPath).st_size
+						previousSize = 0
+						if frameNum > 2:
+							prevFramePath = os.path.join(systemPath(pathActiveRenders), folder)
+							prevFramePath = os.path.join(prevFramePath, 'frame_' + str(frameNum - 1).zfill(4) + '.png')
+							if os.path.exists(prevFramePath):
+								previousSize = os.stat(prevFramePath).st_size
+
+						if frameSize < previousSize * .95 or frameSize == 0:
+							os.remove(fullPath)
+						return
+
+def resumeRenderIfNeccessary():
 	#lets check if we're rendering yet'
 	shouldRender = False
 	nodeData = {}
@@ -289,9 +305,16 @@ def ping(args):
 		activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
 		if len(activeRenders) > 0:
 			#we have an active render we should start!
+
+
 			render = activeRenders[0]
+			global currentRenderDict
+			currentRenderDict = render
 			shouldRender = True
 			nodeData['ActiveProject'] = render['projectName']
+
+			#next lets clean up bad frames
+			cleanupBadFrames()
 		else:
 			nodeData['ActiveProject'] = ''
 	writeJsonToFile(nodeData, systemPath(pathActiveNodeData))
@@ -299,27 +322,6 @@ def ping(args):
 		startRendering(render)
 
 #Start of Script
-
-#First let's create any needed folders
-# wait for the process completion asynchronously
-
-def renderProcess():
-	print('begin rendering')
-	time.sleep(10)
-	print('done')
-def callback(future):
-    if future.exception() is not None:
-        print("got exception: %s" % future.exception())
-    else:
-        print("process returned %d" % future.result())
-
-# print("begin waiting")
-# pool = Pool(max_workers=1)
-# f = pool.submit(subprocess.call, "sleep 2; echo done", shell=True)
-# f.add_done_callback(callback)
-# pool.shutdown(wait=False) # no .submit() calls after that point
-# print("continue waiting asynchronously")
-# sys.exit()
 
 def initialize():
 	#first make sure its windows
@@ -346,10 +348,72 @@ def initialize():
 		subprocess.run(["rsync", "-a", "--progress", linuxPath(remoteFile), linuxPath(localFile)], shell=True)
 		print('There was a change in the render script file, it has been updated. \nPlease run the Render Node again!\n----------------------------Exiting-----------------------------------')
 		sys.exit()
+
+	#stats folders
+	dataFolder = systemPath(['/Volumes/Scratch/Renders/Data/Nodes/' + computerName, 'R:\\Data\\Nodes\\' + computerName])
+	if not os.path.exists(dataFolder):
+		os.mkdir(systemPath(dataFolder))
 	print('initialization Checks Complete')
 
 
+## --------------------------------------------------------------------------------------------------------------------------------------- ##
+## --------------------------------------------------- Statistics Functions! ------------------------------------------------------------- ##
+## --------------------------------------------------------------------------------------------------------------------------------------- ##
 
+def findMetaDataFromMatches(matches):
+	data=[]
+	projectName = ''
+	for match in matches:
+		bits = match.split('\n')
+		first = bits[0]
+		first = first.replace("Saved: '",'').replace(".png'", '')
+		firstBits = first.split('\\')
+		if projectName == '':
+			projectName = firstBits[-2]
+		frame = firstBits[-1]
+		frame = int(frame.replace('frame_', ''))
+		second = bits[1]
+		t = second.replace('Time: ','').replace(' (Saving', '')
+		tSplit = t.split(':')
+		mins = float(tSplit[0])
+		secs = float(tSplit[1])
+		time = mins*60 + secs
+		data.append([frame, time])
+	return projectName, data
+
+def parseBlenderOutputFiles():
+	t = time.time()
+	strTime = time.strftime("%Y-%m-%d %I:%M:%S %p", time.localtime(t))
+	print('ping: ' + strTime)
+
+	localRoot = systemPath(pathLocalRenderRoot)
+	localData = os.path.join(localRoot, 'Data')
+	logPath = os.path.join(localData, 'logs.txt')
+	errorsPath = os.path.join(localData, 'errors.txt')
+
+	lines = ''
+	if not os.path.exists(logPath):
+		return
+	with open(logPath) as f:
+		lines = f.read()
+
+	pattern = 'Saved:[\\S\\s]*?\\(Saving'
+	matches = re.findall(pattern, lines)
+	projectName, newData = findMetaDataFromMatches(matches)
+
+	dataPath = systemPath(['/Volumes/Scratch/Renders/Data/Nodes/' + computerName, 'R:\\Data\\Nodes\\' + computerName])
+	dataPath = os.path.join(dataPath, projectName + '.json')
+	fullData = []
+	print(dataPath)
+	if os.path.exists(dataPath):
+		fullData = readJsonFile(dataPath)
+	
+	resultingData = fullData + [i for i in newData if i not in fullData]
+	writeJsonToFile(resultingData, dataPath)
+
+## --------------------------------------------------------------------------------------------------------------------------------------- ##
+## ------------------------------------------------------ START OF SCRIPT! --------------------------------------------------------------- ##
+## --------------------------------------------------------------------------------------------------------------------------------------- ##
 
 initialize()
 
@@ -358,10 +422,17 @@ os.system('cls')
 print(computerName + ' Reporting for Duty & Ready to Render!!\n\nActive Renders...\n')
 listItemsInArray(activeRenders)
 
+# print("begin waiting")
+pool = Pool(max_workers=1)
+
+
 
 while True:
-	ping('')
-	time.sleep(122.0)    
+	parseBlenderOutputFiles()
+	if not renderNodeActive:
+		print('Re-starting Rendering Logic')
+		resumeRenderIfNeccessary()
+	time.sleep(20.0)
 
 
 print('test')

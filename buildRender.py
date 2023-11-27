@@ -17,8 +17,8 @@ def getComputerName():
 	return parts[0]
 
 #Global Paths
-renderScriptsSource = '/Users/ricky/Code/Scripts/'
-renderScriptsDestination = '/Volumes/Scratch/Renders/Scripts'
+renderScriptsSource = '/Users/ricky/Code/Scripts/renderNode.py'
+renderScriptsDestination = '/Volumes/Scratch/Renders/Scripts/renderNode.py'
 activeFrame = -1
 
 blenderProcess = subprocess.run('', capture_output=True, shell=True)
