@@ -321,29 +321,23 @@ def callback(future):
 # print("continue waiting asynchronously")
 # sys.exit()
 
-if not platform.system() == 'Windows':
-	print('Render Node is only made for windows PCs with NVidia GPUs!')
-	sys.exit()
+def initialize():
+	#first make sure its windows
+	if not platform.system() == 'Windows':
+		print('Render Node is only made for windows PCs with NVidia GPUs!')
+		sys.exit()
 
-#create the local folders
-localRoot = systemPath(pathLocalRenderRoot)
-localData = os.path.join(localRoot, 'Data')
-localProjects = os.path.join(localRoot, 'Projects')
-if not os.path.exists(localRoot):
-	os.makedirs(localRoot)
-if not os.path.exists(localData):
-	os.makedirs(localData)
-if not os.path.exists(localProjects):
-	os.makedirs(localProjects)
+	#create the local folders
+	localRoot = systemPath(pathLocalRenderRoot)
+	localData = os.path.join(localRoot, 'Data')
+	localProjects = os.path.join(localRoot, 'Projects')
+	if not os.path.exists(localRoot):
+		os.makedirs(localRoot)
+	if not os.path.exists(localData):
+		os.makedirs(localData)
+	if not os.path.exists(localProjects):
+		os.makedirs(localProjects)
 
-updateScriptsBeforeProceeding()
-
-activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
-os.system('cls')
-print(computerName + ' Reporting for Duty & Ready to Render!!\n\nActive Renders...\n')
-listItemsInArray(activeRenders)
-
-def updateScriptsBeforeProceeding():
 	localFile = 'C:\\Code\\Scripts\\renderNode.py'
 	remoteFile = 'R:\\Scripts\\renderNode.py'
 	localModified = os.path.getmtime(localFile)
@@ -352,6 +346,17 @@ def updateScriptsBeforeProceeding():
 		subprocess.run(["rsync", "-a", "--progress", linuxPath(remoteFile), linuxPath(localFile)], shell=True)
 		print('There was a change in the render script file, it has been updated. \nPlease run the Render Node again!\n----------------------------Exiting-----------------------------------')
 		sys.exit()
+	print('initialization Checks Complete')
+
+
+
+
+initialize()
+
+activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
+os.system('cls')
+print(computerName + ' Reporting for Duty & Ready to Render!!\n\nActive Renders...\n')
+listItemsInArray(activeRenders)
 
 
 while True:
