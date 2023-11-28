@@ -17,8 +17,8 @@ def getComputerName():
 	return parts[0]
 
 #Global Paths
-renderScriptsSource = '/Users/ricky/Code/Scripts/renderNode.py'
-renderScriptsDestination = '/Volumes/Scratch/Renders/Scripts/renderNode.py'
+renderScriptsSource = '/Users/ricky/Code/Scripts'
+renderScriptsDestination = '/Volumes/Scratch/Renders/Scripts'
 activeFrame = -1
 
 blenderProcess = subprocess.run('', capture_output=True, shell=True)
@@ -36,7 +36,14 @@ def linuxPath(path):
 
 #Start of Script
 
+source = os.path.join(renderScriptsSource, 'renderNode.py')
+destination = os.path.join(renderScriptsDestination, 'renderNode.py')
+os.system('rsync -av --progress "' + source + '" "' + destination + '"')
 
-rsyncCmd = 'rsync -av --progress "' + renderScriptsSource + '" "' + renderScriptsDestination + '"'
-print(rsyncCmd)
-os.system(rsyncCmd)
+source = os.path.join(renderScriptsSource, 'renderMaster.py')
+destination = os.path.join(renderScriptsDestination, 'renderMaster.py')
+os.system('rsync -av --progress "' + source + '" "' + destination + '"')
+
+source = os.path.join(renderScriptsSource, 'renderNodeStats.py')
+destination = os.path.join(renderScriptsDestination, 'renderNodeStats.py') 
+os.system('rsync -av --progress "' + source + '" "' + destination + '"')

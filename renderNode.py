@@ -14,9 +14,10 @@ from concurrent.futures import ThreadPoolExecutor as Pool
 class Status(Enum):
     PAUSED = 1
     ACTIVE = 2
-    COMPLETE = 3
-    VIDEO_COMPLETE = 4
-    READY_TO_DELETE = 5
+    VALIDATE = 3
+    COMPLETE = 4
+    VIDEO_COMPLETE = 5
+    READY_TO_DELETE = 6
                 
 
 #Global Variables
@@ -38,9 +39,6 @@ computerName = getComputerName()
 pathActiveNodeData = ['/Volumes/Scratch/Renders/Data/Nodes/' + computerName + '.json', 'R:\\Data\\Nodes\\' + computerName + '.json']
 pathLocalRenderRoot = ['', 'C:\\Renders']
 pathLocalRenderProjects = ['', 'C:\\Renders\\Projects']
-activeFrame = -1
-
-blenderProcess = subprocess.run('', capture_output=True, shell=True)
 
 def systemPath(pathArray):
 	index = int(platform.system() == 'Windows')
@@ -145,7 +143,6 @@ def writeJsonToFile(dataDict, filePath):
 	with open(filePath, 'w', encoding='utf-8') as f:
 		json.dump(dataDict, f, ensure_ascii=False, indent=4)
 
-
 def findFiles(root, ext):
     # initialize two empty lists to store the paths and sizes
     paths = []
@@ -163,7 +160,6 @@ def findFiles(root, ext):
             sizes.extend(sub_sizes)
     # return the lists of paths and sizes
     return paths, sizes
-
 
 def listItemsInArray(currentProjects):
 	index = 0
@@ -203,7 +199,7 @@ def startRendering(renderDict):
 		os.remove(logPath)
 	if os.path.exists(errorsPath):
 		os.remove(errorsPath)
-	
+
 	#first lets rsync the project to our local location
 	sourceFile = os.path.join(systemPath(pathActiveProjects), renderDict['blendName'])
 	destinationFile = os.path.join(systemPath(pathLocalRenderProjects), renderDict['blendName'])
@@ -262,18 +258,19 @@ def renderDidFinish(args):
 	updateRenderStatus(False)
 	global pool
 	pool = Pool(max_workers=1)
+	checkIfComplete()
 
 def cleanupBadFrames():
 	logPath, errorsPath = getBlenderLogPaths()
 	if not os.path.exists(logPath):
 		return
 
-	lines = '' #DELETE ME
+	lines = ''
 	with open(logPath, 'r') as file:
 		lines = file.readlines()[-30:]
 		for lineData in reversed(lines):
 			line = lineData.strip()
-			regex = 'Fra:.{1,4}\s'
+			regex = 'Fra:.{1,4}\\s'
 			matches = re.findall(regex, line)
 			if len(matches) > 0:
 				match = matches[0]
@@ -302,26 +299,62 @@ def resumeRenderIfNeccessary():
 	shouldRender = False
 	nodeData = {}
 	if not renderNodeActive:
-		activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
+		activeRenders = readJsonFile(systemPath(pathActiveProjectsData))	
 		if len(activeRenders) > 0:
 			#we have an active render we should start!
 
+			render = {}
+			for activeRender in activeRenders:
+				if activeRender['status'] == Status.ACTIVE.name:
+					render = activeRender
 
-			render = activeRenders[0]
-			global currentRenderDict
-			currentRenderDict = render
-			shouldRender = True
-			nodeData['ActiveProject'] = render['projectName']
+			if len(render.keys()) == 0:
+				#no renders active so we break
+				print('No Active Renders to Pick up')
+				nodeData['activeProject'] = ''
+			else:
+				global currentRenderDict
+				currentRenderDict = render
+				shouldRender = True
+				nodeData['activeProject'] = render['blendName']
 
 			#next lets clean up bad frames
 			cleanupBadFrames()
 		else:
-			nodeData['ActiveProject'] = ''
+			nodeData['activeProject'] = ''
+	nodeData['ping'] = time.time()
 	writeJsonToFile(nodeData, systemPath(pathActiveNodeData))
 	if shouldRender:
 		startRendering(render)
 
-#Start of Script
+
+def checkIfComplete():
+	logPath, errorsPath = getBlenderLogPaths()
+	if not os.path.exists(logPath):
+		return
+
+	lines = ''
+	with open(logPath, 'r') as file:
+		lines = file.readlines()[-20:]
+		for lineData in reversed(lines):
+			line = lineData.strip()
+			regex = 'No frames rendered, skipped to not overwrite'
+			matches = re.findall(regex, line)
+			if len(matches) > 0:
+				match = matches[0]
+				print("Think its done!")
+				activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
+				currentRender = readJsonFile(systemPath(pathActiveNodeData))
+				for activeRender in activeRenders:
+					print(activeRender)
+					if activeRender['blendName'] == currentRender['activeProject']:
+						#found it...
+						activeRender['status'] = Status.VALIDATE.name
+						writeJsonToFile(activeRenders, systemPath(pathActiveProjectsData))
+
+## --------------------------------------------------------------------------------------------------------------------------------------- ##
+## -------------------------------------------------- Initialization & Startup Functions  ------------------------------------------------ ##
+## --------------------------------------------------------------------------------------------------------------------------------------- ##
 
 def initialize():
 	#first make sure its windows
@@ -340,6 +373,17 @@ def initialize():
 	if not os.path.exists(localProjects):
 		os.makedirs(localProjects)
 
+	#delete existing blender log files
+	localRoot = systemPath(pathLocalRenderRoot)
+	localData = os.path.join(localRoot, 'Data')
+	logPath = os.path.join(localData, 'logs.txt')
+	errorsPath = os.path.join(localData, 'errors.txt')
+	#shouldn't need this, but we'll see
+	# if os.path.exists(logPath):
+	# 	os.remove(logPath)
+	# if os.path.exists(errorsPath):
+	# 	os.remove(errorsPath)
+
 	localFile = 'C:\\Code\\Scripts\\renderNode.py'
 	remoteFile = 'R:\\Scripts\\renderNode.py'
 	localModified = os.path.getmtime(localFile)
@@ -351,8 +395,9 @@ def initialize():
 
 	#stats folders
 	dataFolder = systemPath(['/Volumes/Scratch/Renders/Data/Nodes/' + computerName, 'R:\\Data\\Nodes\\' + computerName])
+	print(dataFolder)
 	if not os.path.exists(dataFolder):
-		os.mkdir(systemPath(dataFolder))
+		os.mkdir(dataFolder)
 	print('initialization Checks Complete')
 
 
@@ -361,7 +406,7 @@ def initialize():
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 
 def findMetaDataFromMatches(matches):
-	data=[]
+	data={}
 	projectName = ''
 	for match in matches:
 		bits = match.split('\n')
@@ -378,7 +423,7 @@ def findMetaDataFromMatches(matches):
 		mins = float(tSplit[0])
 		secs = float(tSplit[1])
 		time = mins*60 + secs
-		data.append([frame, time])
+		data[frame] = time
 	return projectName, data
 
 def parseBlenderOutputFiles():
@@ -403,13 +448,23 @@ def parseBlenderOutputFiles():
 
 	dataPath = systemPath(['/Volumes/Scratch/Renders/Data/Nodes/' + computerName, 'R:\\Data\\Nodes\\' + computerName])
 	dataPath = os.path.join(dataPath, projectName + '.json')
-	fullData = []
-	print(dataPath)
+	fullData = {}
 	if os.path.exists(dataPath):
 		fullData = readJsonFile(dataPath)
 	
-	resultingData = fullData + [i for i in newData if i not in fullData]
-	writeJsonToFile(resultingData, dataPath)
+	hasChanged = False
+	if len(newData.keys()) == 0:
+		return
+	for key, value in newData.items():
+		if key in fullData:
+			if value == fullData[key]:
+				#nothing new skip
+				continue
+		fullData[key] = value
+		hasChanged = True
+
+	if hasChanged:
+		writeJsonToFile(fullData, dataPath)
 
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 ## ------------------------------------------------------ START OF SCRIPT! --------------------------------------------------------------- ##
@@ -428,11 +483,10 @@ pool = Pool(max_workers=1)
 
 
 while True:
-	parseBlenderOutputFiles()
 	if not renderNodeActive:
 		print('Re-starting Rendering Logic')
 		resumeRenderIfNeccessary()
-	time.sleep(20.0)
-
+	time.sleep(30.0)
+	parseBlenderOutputFiles()
 
 print('test')
