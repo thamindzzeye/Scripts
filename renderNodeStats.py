@@ -43,11 +43,11 @@ def monitorDirectory():
 	path = ['/Volumes/Scratch/Renders/Data/Nodes', 'R:\\Data\\Nodes']
 	return systemPath(path)
 
-def readJsonFile(path):
-	jsonData=open(path)
-	data = json.load(jsonData)
-	jsonData.close()
-	return data
+def readJsonFile(path, errorDefault):
+	with open(path, "r") as jsonData:
+		data = json.load(jsonData)
+		return data
+	return errorDefault
 
 def writeJsonToFile(dataDict, filePath):
 	with open(filePath, 'w', encoding='utf-8') as f:
@@ -102,7 +102,12 @@ class Handler(FileSystemEventHandler):
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 
 def parseNewJsonFile(filePath):
-	newArray = readJsonFile(filePath)
+	print('File: ' + filePath)
+	if not filePath.endswith('.json'):
+		return
+	if not os.path.exists(filePath):
+		return
+	newArray = readJsonFile(filePath, [])
 	split = filePath.split('\\')
 	computer = split[-2]
 	projectName = split[-1].replace('.json', '')
@@ -111,7 +116,7 @@ def parseNewJsonFile(filePath):
 	if not os.path.exists(framesFolder):
 		#This shouldn't happen but the frames folder isn't present
 		return
-	activeProjects = readJsonFile(systemPath(pathActiveProjects))
+	activeProjects = readJsonFile(systemPath(pathActiveProjects), [])
 	activeProject = {}
 	for project in activeProjects:
 		if project['blendName'] == projectName + '.blend':
@@ -125,7 +130,7 @@ def parseNewJsonFile(filePath):
 	dataDict = {}
 	if os.path.exists(dataPath):
 		#this is just final json file we write to disk
-		dataDict = readJsonFile(dataPath)
+		dataDict = readJsonFile(dataPath,{})
 	else:
 		#file didn't exist so let's create the properties
 		dataDict['frames'] = {}
@@ -153,9 +158,6 @@ def parseNewJsonFile(filePath):
 	else:
 		print('no new data')
 
-
-
-
 def getFileStats(rootPath, index):
 	file = os.path.join(rootPath, 'frame_' + str(index).zfill(4) + '.png')
 	if not os.path.exists(file):
@@ -164,8 +166,6 @@ def getFileStats(rootPath, index):
 	filesize = str(round(fileStat.st_size/1000000, 2)) + ' MB'
 	created = datetime.fromtimestamp(fileStat.st_mtime).strftime('%I:%M %p %m-%d-%Y')
 	return filesize, created
-
-
 
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 ## -------------------------------------------------- Initialization & Startup Functions  ------------------------------------------------ ##
@@ -187,9 +187,6 @@ def initialize():
 		sys.exit()
 
 	print('initialization Checks Completed\n\n Progress Monitoring in Progress')
-
-
-
 
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 ## --------------------------------------------------------------- Start of Script!  ----------------------------------------------------- ##

@@ -133,11 +133,11 @@ def dateToString(date):
 def stringToDate(string):
 	return datetime.strptime(string, '%m-%d-%Y %H:%M:%S')
 
-def readJsonFile(path):
-	jsonData=open(path)
-	data = json.load(jsonData)
-	jsonData.close()
-	return data
+def readJsonFile(path, errorDefault):
+	with open(path, "r") as jsonData:
+		data = json.load(jsonData)
+		return data
+	return errorDefault
 
 def writeJsonToFile(dataDict, filePath):
 	with open(filePath, 'w', encoding='utf-8') as f:
@@ -164,7 +164,7 @@ def findFiles(root, ext):
 def listItemsInArray(currentProjects):
 	index = 0
 	for project in currentProjects:
-		print(str(index) + '. ' + project['blendName'])
+		print(str(index) + '. ' + project['blendName'] + ' Status: [' + project['status'] + ']')
 		index = index + 1
 	print('\n')
 					
@@ -299,7 +299,7 @@ def resumeRenderIfNeccessary():
 	shouldRender = False
 	nodeData = {}
 	if not renderNodeActive:
-		activeRenders = readJsonFile(systemPath(pathActiveProjectsData))	
+		activeRenders = readJsonFile(systemPath(pathActiveProjectsData), [])	
 		if len(activeRenders) > 0:
 			#we have an active render we should start!
 
@@ -343,8 +343,8 @@ def checkIfComplete():
 			if len(matches) > 0:
 				match = matches[0]
 				print("Think its done!")
-				activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
-				currentRender = readJsonFile(systemPath(pathActiveNodeData))
+				activeRenders = readJsonFile(systemPath(pathActiveProjectsData), [])
+				currentRender = readJsonFile(systemPath(pathActiveNodeData), {})
 				for activeRender in activeRenders:
 					print(activeRender)
 					if activeRender['blendName'] == currentRender['activeProject']:
@@ -450,7 +450,7 @@ def parseBlenderOutputFiles():
 	dataPath = os.path.join(dataPath, projectName + '.json')
 	fullData = {}
 	if os.path.exists(dataPath):
-		fullData = readJsonFile(dataPath)
+		fullData = readJsonFile(dataPath, {})
 	
 	hasChanged = False
 	if len(newData.keys()) == 0:
@@ -472,7 +472,7 @@ def parseBlenderOutputFiles():
 
 initialize()
 
-activeRenders = readJsonFile(systemPath(pathActiveProjectsData))
+activeRenders = readJsonFile(systemPath(pathActiveProjectsData), [])
 os.system('cls')
 print(computerName + ' Reporting for Duty & Ready to Render!!\n\nActive Renders...\n')
 listItemsInArray(activeRenders)

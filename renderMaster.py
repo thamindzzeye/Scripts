@@ -9,6 +9,7 @@ import re
 from datetime import datetime
 import shutil
 import time
+import math
 
 #Global Variables
 debug = False
@@ -34,6 +35,7 @@ pathActiveProjectsData = ['/Volumes/Scratch/Renders/Data/activeProjects.json', P
 computerName = getComputerName()
 pathActiveNodeData = ['/Volumes/Scratch/Renders/Data/' + computerName + ' .json', Path('R:\\Data\\' + computerName + ' .json')]
 pathProjectAnalytics = ['/Volumes/Scratch/Renders/Data/Projects', Path('R:\\Data\\Projects')]
+pathActiveNodeRoot = ['/Volumes/Scratch/Renders/Data/Nodes', Path('R:\\Data\\Nodes')]
 
 def systemPath(pathArray):
 	index = int(platform.system() == 'Windows')
@@ -121,11 +123,11 @@ def dateToString(date):
 def stringToDate(string):
 	return datetime.strptime(string, '%m-%d-%Y %H:%M:%S')
 
-def readJsonFile(path):
-	jsonData=open(path)
-	data = json.load(jsonData)
-	jsonData.close()
-	return data
+def readJsonFile(path, errorDefault):
+	with open(path, "r") as jsonData:
+		data = json.load(jsonData)
+		return data
+	return errorDefault
 
 def writeJsonToFile(dataDict, filePath):
 	with open(filePath, 'w', encoding='utf-8') as f:
@@ -138,7 +140,8 @@ def chooseAction():
 	action = input('''
 	1. Create new Active Render
 	2. Monitor Progress (Only for Delphi!)
-	3. Clean blend1 files\n\n''')
+	3. Clean blend1 files
+	4. Delete Bad Render Frames\n\nEnter Number >> ''')
 	
 	if action == '1':
 		takeActionNewActiveRender()
@@ -146,6 +149,28 @@ def chooseAction():
 		takeActionMonitorProgress()
 	elif action == '3':
 		takeActionCleanBlend1Files()
+	elif action == '4':
+		deleteBadRenderFrames()
+
+def getActiveProjects():
+	currentProjects = []
+	if os.path.exists(systemPath(pathActiveProjectsData)):
+		currentProjects = readJsonFile(systemPath(pathActiveProjectsData), [])
+
+def deleteBadRenderFrames():
+	nodeDataRoot = systemPath(pathActiveNodeRoot)
+	nodeRootPaths = []
+	roach = "/Volumes/Scratch/Renders/Data/Nodes/Rusty/B-29 inside of hanger, bomb on Table.json"
+	roachFiles = readJsonFile(roach, [])
+	for item in roachFiles:
+		frame = item[0]
+		file = "/Volumes/Scratch/Renders/Active Renders/B-29 inside of hanger, bomb on Table/frame_" + str(frame).zfill(4) + '.png'
+		if os.path.exists(file):
+			print('removing: ' + file)
+			os.remove(file)
+
+
+
 
 def takeActionCleanBlend1Files():
 	filesToDelete, fileSizes = findFiles(systemPath(pathProjects), '.blend1')
@@ -215,7 +240,7 @@ def takeActionNewActiveRender():
 	
 	currentProjects = []
 	if os.path.exists(systemPath(pathActiveProjectsData)):
-		currentProjects = readJsonFile(systemPath(pathActiveProjectsData))
+		currentProjects = readJsonFile(systemPath(pathActiveProjectsData), [])
 	
 	projectExists = False
 	for project in currentProjects:
@@ -285,7 +310,7 @@ def moveAllFilesFromTo(oldRoot, newRoot):
 
 def updateMonitoringData():
 	analyticsRootPath = systemPath(pathProjectAnalytics)
-	activeProjects = readJsonFile(systemPath(pathActiveProjectsData))
+	activeProjects = readJsonFile(systemPath(pathActiveProjectsData), [])
 	for project in activeProjects:
 		createAnalyticsDataForProject(project)
 	print('Analytics Complete')
