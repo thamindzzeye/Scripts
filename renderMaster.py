@@ -36,6 +36,7 @@ computerName = getComputerName()
 pathActiveNodeData = ['/Volumes/Scratch/Renders/Data/' + computerName + ' .json', Path('R:\\Data\\' + computerName + ' .json')]
 pathProjectAnalytics = ['/Volumes/Scratch/Renders/Data/Projects', Path('R:\\Data\\Projects')]
 pathActiveNodeRoot = ['/Volumes/Scratch/Renders/Data/Nodes', Path('R:\\Data\\Nodes')]
+pathVideoOutputs = ['/Volumes/Scratch/Renders/Outputs', 'R:\\Outputs']
 
 def systemPath(pathArray):
 	index = int(platform.system() == 'Windows')
@@ -132,16 +133,30 @@ def readJsonFile(path, errorDefault):
 def writeJsonToFile(dataDict, filePath):
 	with open(filePath, 'w', encoding='utf-8') as f:
 		json.dump(dataDict, f, ensure_ascii=False, indent=4)
-	
+
+def clearConsole():
+	if platform.system() == 'Windows':
+		os.system('cls')
+	else:
+		os.system('clear')
+
+def linuxPath(path):
+	if platform.system() == 'Windows':
+		path = path.replace('\\','/')
+		parts = path.split(':')
+		path = '/cygdrive/' + parts[0] + parts[1]
+		return path
+	return path
+
 def chooseAction():
-	os.system('clear')
+	clearConsole()
 	print('Hello, I am ' + computerName + '!\n\n')
 	print('\n\n - What would you Like to do? Select a Number only\n')
 	action = input('''
 	1. Create new Active Render
 	2. Monitor Progress (Only for Delphi!)
 	3. Clean blend1 files
-	4. Delete Bad Render Frames\n\nEnter Number >> ''')
+	4. Create Video Files For Finished Renders \nAction: ''')
 	
 	if action == '1':
 		takeActionNewActiveRender()
@@ -150,26 +165,73 @@ def chooseAction():
 	elif action == '3':
 		takeActionCleanBlend1Files()
 	elif action == '4':
-		deleteBadRenderFrames()
+		createVideoFiles()
 
 def getActiveProjects():
 	currentProjects = []
 	if os.path.exists(systemPath(pathActiveProjectsData)):
 		currentProjects = readJsonFile(systemPath(pathActiveProjectsData), [])
 
-def deleteBadRenderFrames():
-	nodeDataRoot = systemPath(pathActiveNodeRoot)
-	nodeRootPaths = []
-	roach = "/Volumes/Scratch/Renders/Data/Nodes/Rusty/B-29 inside of hanger, bomb on Table.json"
-	roachFiles = readJsonFile(roach, [])
-	for item in roachFiles:
-		frame = item[0]
-		file = "/Volumes/Scratch/Renders/Active Renders/B-29 inside of hanger, bomb on Table/frame_" + str(frame).zfill(4) + '.png'
-		if os.path.exists(file):
-			print('removing: ' + file)
-			os.remove(file)
+def createVideoFiles():
+	root = systemPath(pathActiveRenders)
+	projectName = selectFolder(root)
+	project = os.path.join(root, projectName)
+	print(projectName)
 
+	
+	frames = os.listdir(project)
+	frames.sort()
+	if len(frames) == 0:
+		print("NO Frames Found Skipping")
+		return
+	firstFrame = int(frames[0].replace('frame_','').replace('.png',''))
+	lastFrame = int(frames[-1].replace('frame_','').replace('.png',''))
+	print('first = ' + str(firstFrame) + ' last = ' + str(lastFrame))
+	quit = False
+	latestFrame = firstFrame
+	zeroFrames = []
+	while quit == False:
+		frame = 'frame_' + str(latestFrame).zfill(4) + '.png'
+		fullPath = os.path.join(project, frame)
+		if not os.path.exists(fullPath):
+			break
+		filesize = os.stat(fullPath).st_size
+		if not filesize > 2000:
+			zeroFrames.append(fullPath)
+			break
+		if latestFrame < lastFrame:
+			latestFrame += 1
+		else:
+			break
 
+	# isAlpha = input ('\n\nRender With Alpha? (y)es / (n)o: ')
+	# if isAlpha:
+
+	numFrames = str(latestFrame - firstFrame + 1)
+	destinationVideo = '"' + os.path.join(systemPath(pathVideoOutputs), projectName + ' [' + str(firstFrame) + '-' + str(latestFrame - firstFrame + 1) + ']' + '.mp4') + '"'
+	print(numFrames)
+	myargs = [
+	'ffmpeg',
+	'-framerate',
+	'30',
+	'-start_number',
+	str(firstFrame),
+	'-i',
+	'"' + os.path.join(project, 'frame_%04d.png') + '"',
+	'-vframes', #number of frames
+	numFrames,
+	'-c:v',
+	'libx264',
+	'-pix_fmt',
+	'yuv420p',
+	destinationVideo]
+	cmd = ''
+	for arg in myargs:
+		cmd = cmd + arg + ' '
+	print(cmd)
+	os.system(cmd)
+
+	print('\n\nComplete!\n\n\n')
 
 
 def takeActionCleanBlend1Files():
@@ -221,20 +283,22 @@ def takeActionNewActiveRender():
 
 	blendFile = selectFile(projectPath, '.blend')
 	print('You Selected: ' + blendFile + '\n\n')
-	action = input('Is this Correct? (Y)es \ (N)o: ')
+	action = input('Is this Correct? (Y)es / (N)o: ')
 	if not action.lower() == 'y':
 		print('\n\nOk Cancelling this operation, Goodbye!\n\n\n')
 		sys.exit()
-	os.system('clear')
-	fullBlendPath = os.path.join(projectPath, blendFile)
-	destinationPath = os.path.join(systemPath(pathActiveProjects), blendFile)
+	clearConsole()
+	fullBlendPath = linuxPath(os.path.join(projectPath, blendFile))
+	destinationPath = linuxPath(os.path.join(systemPath(pathActiveProjects), blendFile))
+
+	
 	
 	#lets create the meta data
 	startFrame = input('Start Frame (usually 0 or 1): ')
 	endFrame = input('End Frame: ')
 	print('file output PNG')
 	print('video FPS 30 frame / sec\n\n')
-	blenderVersion = input('What is the blender version that should be used for rendering?\nExample 4.0 - This must match the exact version of blender found at C:\Program Files\Blender Foundation\nVersion: ')
+	blenderVersion = input('What is the blender version that should be used for rendering?\nExample 4.0 - This must match the exact version of blender found at C:\\Program Files\\Blender Foundation\nVersion: ')
 	
 	renderDict = {'blenderVersion': blenderVersion, 'projectName': projectName, 'blendName': blendFile, 'path': fullBlendPath, 'status': Status.ACTIVE.name, 'startFrame': startFrame, 'endFrame': endFrame}
 	

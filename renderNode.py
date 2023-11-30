@@ -307,6 +307,7 @@ def resumeRenderIfNeccessary():
 			for activeRender in activeRenders:
 				if activeRender['status'] == Status.ACTIVE.name:
 					render = activeRender
+					break
 
 			if len(render.keys()) == 0:
 				#no renders active so we break
