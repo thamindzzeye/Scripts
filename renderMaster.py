@@ -229,6 +229,8 @@ def createVideoFiles():
 	for arg in myargs:
 		cmd = cmd + arg + ' '
 	print(cmd)
+	if platform.system() == 'Windows':
+		cmd = cmd.replace('-c:v libx264', '')
 	os.system(cmd)
 
 	print('\n\nComplete!\n\n\n')

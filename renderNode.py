@@ -423,7 +423,7 @@ def findMetaDataFromMatches(matches):
 		tSplit = t.split(':')
 		mins = float(tSplit[0])
 		secs = float(tSplit[1])
-		time = mins*60 + secs
+		time = round(mins*60 + secs, 2)
 		data[frame] = time
 	return projectName, data
 
