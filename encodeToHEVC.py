@@ -68,7 +68,7 @@ def performActionOnVideo(filePath):
 		print('hevc file already exists so skipping')
 		return
 
-	cmdStr = 'ffmpeg -i "' + filePath + '" -c:v libx265 -crf 28 -preset medium -codec:a copy -tag:v hvc1 "' + newFilePath + '"'
+	cmdStr = 'ffmpeg -i "' + filePath + '" -map 0 -c:v libx265 -crf 28 -preset medium -c:a copy -tag:v hvc1 "' + newFilePath + '"'
 	os.system(cmdStr)
 
 clearConsole()
@@ -93,6 +93,7 @@ logName = 'Encode_' + timestamp + '.txt'
 ans = input('1. Encode all videos to HEVC\n2. Remove old version of newly encoded files\nSelect: ')
 if ans == '1':
 	allVideos = getFullPaths(workingDir)
+	allVideos.sort()
 	for file in allVideos:
 		performActionOnVideo(file)
 elif ans == '2':
