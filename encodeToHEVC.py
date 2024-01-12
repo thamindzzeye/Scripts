@@ -68,7 +68,7 @@ def performActionOnVideo(filePath):
 		print('hevc file already exists so skipping')
 		return
 
-	cmdStr = 'ffmpeg -i "' + filePath + '" -map 0 -c:v libx265 -crf 28 -preset medium -c:a copy -tag:v hvc1 "' + newFilePath + '"'
+	cmdStr = 'ffmpeg -i "' + filePath + '" -c:v libx265 -crf 28 -preset medium -c:a copy -map 0 -tag:v hvc1 "' + newFilePath + '"'
 	os.system(cmdStr)
 
 clearConsole()
