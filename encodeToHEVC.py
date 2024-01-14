@@ -75,7 +75,7 @@ def performActionOnVideo(filePath):
 	streamsStr = ''
 	print('streams: ' + str(streams))
 	if streams > 1:
-		streamsStr = '-map 0:a -map 0:v:0' #'-map 0'
+		streamsStr = '-map 0:a -map 0:v:0 -map 0:s:0 -scodec mov_text' #'-map 0'
 	cmdStr = 'ffmpeg -i "' + filePath + '" -c:v libx265 -crf 28 -preset medium -c:a copy ' + streamsStr +' -tag:v hvc1 "' + newFilePath + '"'
 	os.system(cmdStr)
 
