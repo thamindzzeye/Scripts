@@ -244,8 +244,9 @@ def takeActionStartNewProject(userDict):
 	
 	#also make folder in thumbnails
 	newThumbDir = os.path.join(pathThumbnails, projectType)
-	newThumbDir = os.path.join(newThumbDir, projectName)
-	os.mkdir(newThumbDir)
+	if os.path.exists(newThumbDir):
+		newThumbDir = os.path.join(newThumbDir, projectName)
+		os.mkdir(newThumbDir)
 	
 	fcpxOldPath = os.path.join(pathNewProject, 'Template.fcpbundle')
 	fcpxNewPath = os.path.join(pathNewProject, baseProjectName + '.fcpbundle')
