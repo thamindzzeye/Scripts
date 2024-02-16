@@ -208,8 +208,8 @@ def takeActionStartNewProject(userDict):
 	projectPath = os.path.join(pathAlexandria, projectType)
 	folders = os.listdir(projectPath)
 	folders.sort()
-	checker = re.compile('[a-zA-Z][0-9]{1,6}')
-	letterChecker = re.compile('[a-zA-z]')
+	checker = re.compile('[a-zA-Z]{1,2}[0-9]{1,6}')
+	letterChecker = re.compile('[a-zA-z]{1,2}')
 	numberChecker = re.compile('[0-9]{1,6}')
 	dataDict = {}
 	for folder in folders:
