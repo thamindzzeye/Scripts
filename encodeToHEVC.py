@@ -68,15 +68,19 @@ def performActionOnVideo(filePath):
 	if os.path.exists(newFilePath):
 		print('hevc file already exists so skipping')
 		return
-
+	if '_hvcx' + os.path.splitext(filePath)[1] in filePath:
+		print('this is an encoded file skipping')
+		return
 	# next lets check for multi video streams
 	command = 'ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "' + filePath + '" | wc -w'
 	streams  = int(os.popen(command).readlines()[0])
 	streamsStr = ''
 	print('streams: ' + str(streams))
 	if streams > 1:
-		streamsStr = '-map 0:a -map 0:v:0 -map 0:s:0 -scodec mov_text' #'-map 0'
+		streamsStr = '-map 0:a -map 0:v:0 -map 0:s:0? -scodec mov_text' #'-map 0'
 	cmdStr = 'ffmpeg -i "' + filePath + '" -c:v libx265 -crf 28 -preset medium -c:a copy ' + streamsStr +' -tag:v hvc1 "' + newFilePath + '"'
+	clearConsole()
+	print('command:\n\n\n' + cmdStr)
 	os.system(cmdStr)
 
 clearConsole()
