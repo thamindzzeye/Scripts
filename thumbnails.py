@@ -38,6 +38,8 @@ def writeDictToFile(dictionary, filePath):
 def updateLastModifiedDatesInFolder(folderPath, dateDict, channel):
 	projects = os.listdir(folderPath)
 	for project in projects:
+		if os.path.isdir(project) == False:
+			continue
 		if project.lower() in folderSkipArray:
 			continue
 		
