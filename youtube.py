@@ -20,8 +20,16 @@ def encodeNeededVideos():
 	files = os.listdir(progressFolder)
 	for file in files:
 		if isVideoFile(file):
+
 			fullPath = os.path.join(progressFolder, file)
 			newPath = os.path.join(destination, file)
+			# Let's remove special characters like $ to be safe $1 for example causes problems
+			if fullPath != fullPath.replace("$",""):
+				# we have a situation where we gotta rename the file then run everything
+				os.rename(fullPath, fullPath.replace("$","USD"))
+				fullPath = fullPath.replace("$","USD")
+				newPath = newPath.replace("$","USD")
+
 			command = 'ffprobe -v error -select_streams v:0 -show_entries stream=codec_name -of default=noprint_wrappers=1:nokey=1 "' + fullPath + '"'
 			codec  = os.popen(command).readlines()[0].lower()
 			print('------------------------------------------\nWorking on: ' + file)
@@ -37,18 +45,15 @@ def encodeNeededVideos():
 
 fileLocation = '\'~/Downloads/YoutubeVids/Progress/%(title)s.%(ext)s\''
 
-
-
 if not os.path.exists(progressFolder):
     os.makedirs(progressFolder)
 
 
 url = input('What is the youtube (share) URL? :  ')
-
+url = url.replace('?feature=shared','')
 command = 'yt-dlp -f \'bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio\' --merge-output-format mp4 --output ' + fileLocation + ' ' + '\'' + url + '\''
 print(command)
 os.system(command)
-
 encodeNeededVideos()
 
 print("""
