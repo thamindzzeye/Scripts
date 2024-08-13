@@ -188,17 +188,13 @@ def performProjectCheckout(projectType, project):
 		fileToCheck = os.path.join(pathProjectAlexandria, fcpxbundle)
 		localFileToCheck = os.path.join(pathProjectLocal, fcpxbundle)
 
-		
-		print('checking: ' + localFileToCheck)
-		print(os.path.exists(localFileToCheck))
 		copyExists = os.path.exists(localFileToCheck)
 		if os.path.exists(localFileToCheck) == False:
 			try:
-
 				# Copy the entire folder
+				print("This Project doesn't exist so Copying now... Please Wait...")
 				shutil.copytree(fileToCheck, localFileToCheck)
 
-				
 			except Exception as e:
 				print(f"An error occurred: {e}")
 
