@@ -66,9 +66,10 @@ def findFilesByExtension(folder_path, extensions):
     return matched_files
 
 def convertImagestoWebp(files):
+    quality = input('Specify quality (50 is usual 100 is max): ')
     for file in files:
         newFile = os.path.join(outputPath, getFilenameWithoutExtension(file) + '.webp')
-        cmd = 'magick "' + file + '" -quality 50 -define webp:lossless=false  "' + newFile + '"'
+        cmd = 'magick "' + file + '" -quality ' + quality + ' -define webp:lossless=false  "' + newFile + '"'
         os.system(cmd)
 
 ensureFolderExists(rootPath)

@@ -5,7 +5,7 @@ from os.path import isfile, join
 from pathlib import Path
 import re
 from datetime import datetime
-
+import shutil
 
 
 #Global Variables
@@ -182,6 +182,31 @@ def performProjectCheckout(projectType, project):
 	if not os.path.exists(pathProjectLocal):
 		os.makedirs(pathProjectLocal)
 	
+	
+	for fcpxbundle in fcpxbundles:
+
+		fileToCheck = os.path.join(pathProjectAlexandria, fcpxbundle)
+		localFileToCheck = os.path.join(pathProjectLocal, fcpxbundle)
+
+		
+		print('checking: ' + localFileToCheck)
+		print(os.path.exists(localFileToCheck))
+		copyExists = os.path.exists(localFileToCheck)
+		if os.path.exists(localFileToCheck) == False:
+			try:
+
+				# Copy the entire folder
+				shutil.copytree(fileToCheck, localFileToCheck)
+
+				
+			except Exception as e:
+				print(f"An error occurred: {e}")
+
+
+		rsyncString = "rsync -av --delete --progress '" + pathProjectAlexandria + '/' + fcpxbundle + "' '" + pathProjectLocal + "'"
+		os.system(rsyncString)
+
+
 	timestamp = dateToString(datetime.now())
 	checkoutDict = checkoutDictForKey(key, userDict)
 	checkoutDict["key"] = key
@@ -196,11 +221,7 @@ def performProjectCheckout(projectType, project):
 	writeJsonToFile(checkoutDict, checkoutFilePath)
 	writeJsonToFile(checkoutDict, checkoutFilePathLocal)
 	writeJsonToFile(userDict, pathUserData)
-	
-	for fcpxbundle in fcpxbundles:
-		rsyncString = "rsync -av --delete --progress '" + pathProjectAlexandria + '/' + fcpxbundle + "' '" + pathProjectLocal + "'"
-		os.system(rsyncString)
-	
+
 	print('Successfully Checked OUT - No one else can edit this now')
 
 def takeActionStartNewProject(userDict):
