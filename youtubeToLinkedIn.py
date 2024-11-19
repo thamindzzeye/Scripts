@@ -80,10 +80,6 @@ print(command)
 os.system(command)
 encodeNeededVideos()
 
-# Finally let's check if its more than 15 minutes and clip it and add the video end cap
-duration = getMediaLength(newPath)
-
-# shortenVideoIfNeeded('/Users/ricky/Downloads/Abb_speech.mp4', 'Abb_speech.mp4')
 
 print("""
 
