@@ -278,7 +278,22 @@ def takeActionStartNewProject(userDict):
 	performProjectCheckout(projectType, projectName)
 
 
+def is_volume_mounted(volume_name):
+    """Checks if a volume is mounted by searching in /Volumes/ (macOS & Linux)"""
+    mount_path = f"/Volumes/{volume_name}"
+
+    if os.path.isdir(mount_path):
+        print(f"✅ {mount_path} is mounted!")
+        return True
+    else:
+        print(f"❌ {mount_path} is NOT mounted.")
+        return False
+
 #Start of Script
+if not is_volume_mounted('Public/Dropbox'):
+	sys.exit()
+
+
 userDict = {}
 userDict = initialize(userDict)
 chooseAction(userDict)
