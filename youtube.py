@@ -18,7 +18,7 @@ def isVideoFile(file):
 	else:
 		return False
 
-def encodeNeededVideos(sourceText, trimCmd):
+def encodeNeededVideos(sourceText, trimCmd, comment):
 	files = os.listdir(progressFolder)
 	for file in files:
 		if isVideoFile(file):
@@ -51,7 +51,7 @@ def encodeNeededVideos(sourceText, trimCmd):
 
 			if "h264" in codec:
 				if sourceText:
-					command = 'ffmpeg -i "' + fullPath + '"' + sourceText + trimCmd + ' -c:v h264_videotoolbox -b:v '+ str(bv) + ' -maxrate ' + str(maxRate) + ' -bufsize 6000k -preset fast -codec:a copy "' + newPath + '"'
+					command = 'ffmpeg -i "' + fullPath + '"' + sourceText + trimCmd + comment + ' -c:v h264_videotoolbox -b:v '+ str(bv) + ' -maxrate ' + str(maxRate) + ' -bufsize 6000k -preset fast -codec:a copy "' + newPath + '"'
 					os.system(command)
 					os.remove(fullPath)
 				else:
@@ -59,7 +59,7 @@ def encodeNeededVideos(sourceText, trimCmd):
 			else:
 				print('Video has Codec: ' + codec + ' which is not supported. converting now...')
 				
-				command = 'ffmpeg -i "' + fullPath + '"' + sourceText + trimCmd + ' -c:v h264_videotoolbox -b:v '+ str(bv) + ' -maxrate ' + str(maxRate) + ' -bufsize 6000k -preset fast -codec:a copy "' + newPath + '"'
+				command = 'ffmpeg -i "' + fullPath + '"' + sourceText + trimCmd + comment + ' -c:v h264_videotoolbox -b:v '+ str(bv) + ' -maxrate ' + str(maxRate) + ' -bufsize 6000k -preset fast -codec:a copy "' + newPath + '"'
 				os.system(command)
 				os.remove(fullPath)
 
@@ -104,6 +104,13 @@ def check_for_word(args_list, word):
     return any(word.lower() in arg.lower() for arg in args_list)
 
 
+def createCommentFromVideoData(videoData, url):
+	title = videoData['title'].replace('"', '')
+	channel = videoData['channel'].replace('"', '')
+	urlSafe = url.replace('"', '')
+	comment = f" -metadata comment=\"Title: {title}\nChannel: {channel}\nURL: {urlSafe}\" "
+	return comment
+
 fileLocation = os.path.join(destination, 'Progress/%(title)s.%(ext)s')
 
 if not os.path.exists(progressFolder):
@@ -145,7 +152,8 @@ if shouldTrim:
 
 
 videoData = get_youtube_metadata(url)
-print(videoData)
+
+comment = createCommentFromVideoData(videoData, url)
 
 
 sourceText = ""
@@ -165,7 +173,7 @@ if sourceText:
 
 download_highest_quality(url, fileLocation)
 
-encodeNeededVideos(sourceText, trimCmd)
+encodeNeededVideos(sourceText, trimCmd, comment)
 
 print("""
 
