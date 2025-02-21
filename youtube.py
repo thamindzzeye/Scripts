@@ -18,7 +18,7 @@ def isVideoFile(file):
 	else:
 		return False
 
-def encodeNeededVideos(sourceText):
+def encodeNeededVideos(sourceText, trimCmd):
 	files = os.listdir(progressFolder)
 	for file in files:
 		if isVideoFile(file):
@@ -51,7 +51,7 @@ def encodeNeededVideos(sourceText):
 
 			if "h264" in codec:
 				if sourceText:
-					command = 'ffmpeg -i "' + fullPath + '"' + sourceText + ' -c:v h264_videotoolbox -b:v '+ str(bv) + ' -maxrate ' + str(maxRate) + ' -bufsize 6000k -preset fast -codec:a copy "' + newPath + '"'
+					command = 'ffmpeg -i "' + fullPath + '"' + sourceText + trimCmd + ' -c:v h264_videotoolbox -b:v '+ str(bv) + ' -maxrate ' + str(maxRate) + ' -bufsize 6000k -preset fast -codec:a copy "' + newPath + '"'
 					os.system(command)
 					os.remove(fullPath)
 				else:
@@ -59,7 +59,7 @@ def encodeNeededVideos(sourceText):
 			else:
 				print('Video has Codec: ' + codec + ' which is not supported. converting now...')
 				
-				command = 'ffmpeg -i "' + fullPath + '"' + sourceText + ' -c:v h264_videotoolbox -b:v '+ str(bv) + ' -maxrate ' + str(maxRate) + ' -bufsize 6000k -preset fast -codec:a copy "' + newPath + '"'
+				command = 'ffmpeg -i "' + fullPath + '"' + sourceText + trimCmd + ' -c:v h264_videotoolbox -b:v '+ str(bv) + ' -maxrate ' + str(maxRate) + ' -bufsize 6000k -preset fast -codec:a copy "' + newPath + '"'
 				os.system(command)
 				os.remove(fullPath)
 
@@ -109,6 +109,23 @@ fileLocation = os.path.join(destination, 'Progress/%(title)s.%(ext)s')
 if not os.path.exists(progressFolder):
     os.makedirs(progressFolder)
 
+needHelp = check_for_word(sys.argv, 'help')
+if needHelp:
+	print('''
+
+		============================== Youtube Download Help ================================
+		This script has a few optional parameters
+
+		By default it will embed the source for the channel name into the video. 
+		If you don't want this, type
+		youtube source
+
+		if you want to trim the resulting video type
+		youtube trim
+		''')
+	sys.exit()
+
+
 
 sourceInputExists = check_for_word(sys.argv, 'source')
 if sourceInputExists:
@@ -118,6 +135,14 @@ else:
 
 url = input('What is the youtube (share) URL? :  ')
 url = url.replace('?feature=shared','')
+
+shouldTrim = check_for_word(sys.argv, 'trim')
+trimCmd = ""
+if shouldTrim:
+	startTime = input('Start time in hh:mm:ss format: ')
+	endTime = input('End time in hh:mm:ss format: ')
+	trimCmd = ' -ss ' + startTime + ' -to ' + endTime + ' '
+
 
 videoData = get_youtube_metadata(url)
 print(videoData)
@@ -140,7 +165,7 @@ if sourceText:
 
 download_highest_quality(url, fileLocation)
 
-encodeNeededVideos(sourceText)
+encodeNeededVideos(sourceText, trimCmd)
 
 print("""
 
