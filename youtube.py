@@ -44,8 +44,8 @@ def encodeNeededVideos(sourceText):
 			print(vidRes)
 			
 			ratio = int(vidResX) / 1920
-			bv = 2500000 * ratio
-			maxRate = 3500000 * ratio
+			bv = 3000000 * ratio
+			maxRate = 5000000 * ratio
 			if sourceText:
 				sourceText = " -vf " + f"drawtext=fontfile='{fontPath}':text='{sourceText}':fontcolor=white:fontsize={int(24 * ratio)}:box=1:boxcolor=black@0.5:boxborderw={int(10 * ratio)}:x={int(30 * ratio)}:y=h-th-{int(30 * ratio)}"
 
@@ -82,6 +82,27 @@ def download_highest_quality(url, save_path):
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
 
+def get_youtube_metadata(video_url):
+    """Extracts video title and channel name from a YouTube URL."""
+    ydl_opts = {
+        'quiet': True,  # Suppress extra output
+        'skip_download': True,  # Do not download the video
+    }
+    
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        info = ydl.extract_info(video_url, download=False)  # Scrape metadata
+        
+        # Extract required fields
+        video_data = {
+            "channel": info.get("uploader", "Unknown Channel"),
+            "title": info.get("title", "Unknown Title")
+        }
+        
+        return video_data
+
+def check_for_word(args_list, word):
+    return any(word.lower() in arg.lower() for arg in args_list)
+
 
 fileLocation = os.path.join(destination, 'Progress/%(title)s.%(ext)s')
 
@@ -89,13 +110,33 @@ if not os.path.exists(progressFolder):
     os.makedirs(progressFolder)
 
 
-
+sourceInputExists = check_for_word(sys.argv, 'source')
+if sourceInputExists:
+	addVideoSource = '2'
+else:
+	addVideoSource = '1'
 
 url = input('What is the youtube (share) URL? :  ')
 url = url.replace('?feature=shared','')
-sourceText = input('Source Text? (blank for none): ')
+
+videoData = get_youtube_metadata(url)
+print(videoData)
+
+
+sourceText = ""
+if addVideoSource == '1':
+	sourceText = videoData['channel']
+elif addVideoSource == '2':
+	sourceText = input('>> Video Source Text: ')
+elif addVideoSource == '3':
+	sourceText = ""
+else:
+	sys.exit()
+
 if sourceText:
 	sourceText = "▶ // " + sourceText
+	print('video source Burn in Text: ' + sourceText)
+
 
 download_highest_quality(url, fileLocation)
 
