@@ -22,7 +22,7 @@ def breakdownFilePath(fullPath):
     split = os.path.split(fullPath.lower())
     folderPath = split[0]
     file = split[1]
-    regexStr = '[0-9]{2,8}\.(png|jpg)'
+    regexStr = '[0-9]{2,8}\.(png|jpg|jpeg)'
     match = re.search(regexStr, file.lower())
     name = file.replace(match.group(),"")
     substr = match.group()
@@ -34,7 +34,7 @@ def breakdownFilePath(fullPath):
 
 def keyForFile(file):
     key = file.replace(workingDir, "").lower()
-    regexStr = '[0-9]{2,8}\.(png|jpg)'
+    regexStr = '[0-9]{2,8}\.(png|jpg|jpeg)'
     match = re.search(regexStr, key)
     key = key.replace(match.group(),"")
     return key
