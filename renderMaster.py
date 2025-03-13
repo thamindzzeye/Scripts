@@ -6,7 +6,7 @@ from os.path import isfile, join
 from pathlib import Path
 from threading import Timer
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 import shutil
 import time
 import math
@@ -23,9 +23,11 @@ def getComputerName():
 class Status(Enum):
     PAUSED = 1
     ACTIVE = 2
-    COMPLETE = 3
-    VIDEO_COMPLETE = 4
-    READY_TO_DELETE = 5
+    VALIDATE = 3
+    COMPLETE = 4
+    VIDEO_COMPLETE = 5
+    READY_TO_DELETE = 6
+    CANCELLED = 7
 
 #Global Paths
 pathProjects = ['/Volumes/Public/Blender/Projects', 'A:\\Blender\\Projects']
@@ -156,7 +158,9 @@ def chooseAction():
 	1. Create new Active Render
 	2. Monitor Progress (Only for Delphi!)
 	3. Clean blend1 files
-	4. Create Video Files For Finished Renders \nAction: ''')
+	4. Create Video Files For Finished Renders
+	5. Clean Up OLD Projects
+	6. CANCEL Active Render \nAction: ''')
 	
 	if action == '1':
 		takeActionNewActiveRender()
@@ -166,11 +170,17 @@ def chooseAction():
 		takeActionCleanBlend1Files()
 	elif action == '4':
 		createVideoFiles()
+	elif action == '5':
+		cleanupOldProjects()
+	elif action == '6':
+		cancelActiveRender()
 
 def getActiveProjects():
 	currentProjects = []
 	if os.path.exists(systemPath(pathActiveProjectsData)):
 		currentProjects = readJsonFile(systemPath(pathActiveProjectsData), [])
+		return currentProjects
+		
 
 def createVideoFiles():
 	root = systemPath(pathActiveRenders)
@@ -278,8 +288,12 @@ def findFiles(root, ext):
     return paths, sizes
 
 def takeActionNewActiveRender():
-	print("Let's Pick which render you want to start")
+	print('\nBLENDER CHECKLIST\n\n1. Have you set the Output Settings -> RGB for all videos without alpha (standard)\nRGBA - ONLY when alpha pixels are present\n2. Color Depth -> 16 (16 bit color)\n3. Image Sequence -> YES for Placeholder, NO for Overwrite')
 	
+	imReady = input('OK Im ready (y)es: ')
+	if not imReady.lower() == 'y':
+		sys.exit()
+	print("Let's Pick which render you want to start")
 	projectName = selectFolder(systemPath(pathProjects))
 	projectPath = os.path.join(systemPath(pathProjects), projectName)
 
@@ -299,10 +313,21 @@ def takeActionNewActiveRender():
 	startFrame = input('Start Frame (usually 0 or 1): ')
 	endFrame = input('End Frame: ')
 	print('file output PNG')
-	print('video FPS 30 frame / sec\n\n')
+	print('video FPS 30 frame / sec\n\nWhich Render Engine Should I Use?\n1. Cycles\n2. EVEE')
+	engine = input('Render Engine (1 or 2): ')
+	if engine == '1':
+		# 1 is cycles
+		engine = "CYCLES"
+	elif engine == 2:
+		# 2 is evee
+		engine = "BLENDER_EEVEE"
+	else:
+		print("This is not a valid choice! Please enter either 1 or 2\nBreaking now. Please retry 'renderMaster' if you want to add this project" )
+		sys.exit()
+
 	blenderVersion = input('What is the blender version that should be used for rendering?\nExample 4.0 - This must match the exact version of blender found at C:\\Program Files\\Blender Foundation\nVersion: ')
 	
-	renderDict = {'blenderVersion': blenderVersion, 'projectName': projectName, 'blendName': blendFile, 'path': fullBlendPath, 'status': Status.ACTIVE.name, 'startFrame': startFrame, 'endFrame': endFrame}
+	renderDict = {'blenderVersion': blenderVersion, 'projectName': projectName, 'blendName': blendFile, 'path': fullBlendPath, 'status': Status.ACTIVE.name, 'startFrame': startFrame, 'endFrame': endFrame, 'renderEngine': engine}
 	
 	currentProjects = []
 	if os.path.exists(systemPath(pathActiveProjectsData)):
@@ -417,7 +442,97 @@ def createFileAttributesDictForFolder(folder):
 	
 	print(data)
 	sys.exit()
+
+def cleanupOldProjects():
+	delete_old_folders(systemPath(pathActiveRenders))
 		
+def delete_old_folders(root_folder):
+    """
+    Scans all subfolders in root_folder, filters those older than 2 weeks,
+    and prompts the user to delete them.
+
+    Args:
+        root_folder (str): Path to the root directory to scan.
+    """
+    # Ensure the root folder exists
+    if not os.path.isdir(root_folder):
+        print(f"Error: '{root_folder}' is not a valid directory.")
+        return
+
+    # Calculate the cutoff date (2 weeks ago)
+    two_weeks_ago = datetime.now() - timedelta(weeks=2)
+    
+    # List to store folders older than 2 weeks
+    old_folders = []
+
+    # Walk through all subdirectories
+    for dirpath, dirnames, filenames in os.walk(root_folder):
+        # Skip the root folder itself, only process subfolders
+        if dirpath == root_folder:
+            continue
+        
+        # Get the last modified time of the folder
+        mod_time = datetime.fromtimestamp(os.path.getmtime(dirpath))
+        
+        # Check if the folder is older than 2 weeks
+        if mod_time < two_weeks_ago:
+            old_folders.append(dirpath)
+
+    # If no old folders found, inform the user and exit
+    if not old_folders:
+        print(f"No subfolders older than 2 weeks found in '{root_folder}'.")
+        return
+
+    # Sort folders for consistent output (optional)
+    old_folders.sort()
+
+    # Iterate through old folders and prompt for deletion
+    for folder in old_folders:
+        while True:
+            # Display folder path and last modified date
+            mod_time_str = datetime.fromtimestamp(os.path.getmtime(folder)).strftime('%Y-%m-%d %H:%M:%S')
+            print(f"\nFolder: {folder}")
+            print(f"Last modified: {mod_time_str}")
+            
+            # Prompt user for input
+            response = input("Delete this folder? (y/n): ").strip().lower()
+            
+            if response == 'y':
+                try:
+                    shutil.rmtree(folder)  # Delete the folder and its contents
+                    print(f"Deleted: {folder}")
+                    break
+                except Exception as e:
+                    print(f"Error deleting {folder}: {e}")
+                    break
+            elif response == 'n':
+                print(f"Skipped: {folder}")
+                break
+            else:
+                print("Invalid input. Please enter 'y' for yes or 'n' for no.")
+
+def cancelActiveRender():
+	activeProjects = getActiveProjects()
+	if len(activeProjects) == 0:
+		print('No Active projects to cancel!')
+		sys.exit()
+
+	print('\n\nSelect which active project to cancel')
+	index = 0
+	for project in activeProjects:
+		print(str(index) + ') - Name: ' + project['blendName'])
+
+	cancelIndex = input('Project to Cancel: ')
+	index = int(cancelIndex)
+
+	if index < 0 or index > len(activeProjects) - 1:
+		print("Error: Index is out of bounds. Exiting.")
+		sys.exit()
+
+	project = activeProjects[index]
+	project['status'] = Status.CANCELLED.name
+	writeJsonToFile(activeProjects, systemPath(pathActiveProjectsData))
+
 
 def takeActionMonitorProgress():
 	
@@ -429,17 +544,6 @@ def takeActionMonitorProgress():
 #Start of Script
 
 chooseAction()
-
-
-
-
-
-
-
-
-
-
-
 
 
 

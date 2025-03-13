@@ -18,12 +18,14 @@ class Status(Enum):
     COMPLETE = 4
     VIDEO_COMPLETE = 5
     READY_TO_DELETE = 6
+    CANCELLED = 7
                 
 
 #Global Variables
 debug = False
 currentRenderDict = {}
 renderNodeActive: bool = False
+lastRenderedFrame = 0
 
 def getComputerName():
 	name = platform.node()
@@ -223,6 +225,7 @@ def startRendering(renderDict):
 	framePath = os.path.join(framePath, 'frame_####')
 
 	#let's create the render command
+	renderEngine = renderDict['renderEngine']
 	with open(logPath,"wb") as out, open(errorsPath,"wb") as err:
 		print('starting')
 		myargs = [
@@ -232,7 +235,7 @@ def startRendering(renderDict):
 		"-o",
 		framePath,
 		"-E",
-		"CYCLES",
+		renderEngine,
 		"-a",
 		"--",
 		"--cycles-device CUDA",
@@ -430,7 +433,6 @@ def findMetaDataFromMatches(matches):
 def parseBlenderOutputFiles():
 	t = time.time()
 	strTime = time.strftime("%Y-%m-%d %I:%M:%S %p", time.localtime(t))
-	print('ping: ' + strTime)
 
 	localRoot = systemPath(pathLocalRenderRoot)
 	localData = os.path.join(localRoot, 'Data')
@@ -463,9 +465,13 @@ def parseBlenderOutputFiles():
 				continue
 		fullData[key] = value
 		hasChanged = True
+		global lastRenderedFrame
+		lastRenderedFrame = key
 
 	if hasChanged:
 		writeJsonToFile(fullData, dataPath)
+	print(strTime + ' | ' + currentRenderDict['blendName'] + ' | Last Frame: ' + lastRenderedFrame)
+
 
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 ## ------------------------------------------------------ START OF SCRIPT! --------------------------------------------------------------- ##
@@ -487,7 +493,8 @@ while True:
 	if not renderNodeActive:
 		print('Re-starting Rendering Logic')
 		resumeRenderIfNeccessary()
-	time.sleep(30.0)
+	
 	parseBlenderOutputFiles()
+	time.sleep(30.0)
 
-print('test')
+
