@@ -137,12 +137,14 @@
     <div id="lastUpdated"></div>
 
     <script>
+        // Persist selected file state using localStorage
         let selectedFile = null;
         const defaultFileName = 'render_data.json';
 
         async function loadData() {
             let data;
             let sourceName = '';
+            const storedFileName = localStorage.getItem('selectedFileName');
 
             try {
                 if (selectedFile) {
@@ -154,6 +156,12 @@
                         reader.readAsText(selectedFile);
                     });
                     sourceName = selectedFile.name;
+                    localStorage.setItem('selectedFileName', sourceName); // Store the file name
+                } else if (storedFileName) {
+                    // If no new file is selected but one was previously, prompt user to reselect
+                    document.getElementById('lastUpdated').textContent = 
+                        `Last file "${storedFileName}" not available. Please reselect the file.`;
+                    return;
                 } else {
                     // Fall back to default file only if no file has been selected
                     const response = await fetch(defaultFileName);
