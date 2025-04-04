@@ -55,6 +55,17 @@ def writeJsonToFile(dataDict, filePath):
     with open(filePath, 'w', encoding='utf-8') as f:
         json.dump(dataDict, f, ensure_ascii=False, indent=4)
 
+def convertSecsToHoursMinutes(seconds):
+    hours = math.floor(seconds / 3600.0)
+    seconds = seconds - hours * 3600.0
+    minutes = math.floor(seconds / 60.0)
+    timeStr = ''
+    if hours > 0:
+        timeStr = f"{hours} hr{'s' if hours != 1 else ''}"
+    if minutes > 0:
+        timeStr += f"{', ' if hours > 0 else ''}{minutes} min{'s' if minutes != 1 else ''}"
+    return timeStr if timeStr else "0 mins"
+
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 ## -------------------------------------------------- Watcher Class Functions  ----------------------------------------------------------- ##
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
@@ -241,7 +252,7 @@ def getFileStats(rootPath, index):
     return filesize, created, rawTime
 
 def writeHtmlFile(dataDict, filePath):
-    # Generate HTML content with embedded data and sortable tables
+    # Generate HTML content with embedded data, sortable tables, and progress bar with percentage
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -261,6 +272,12 @@ def writeHtmlFile(dataDict, filePath):
         h1 {{
             text-align: center;
             color: #34495e;
+            margin-bottom: 10px;
+        }}
+        #lastUpdated {{
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
             margin-bottom: 20px;
         }}
         .section {{
@@ -304,16 +321,36 @@ def writeHtmlFile(dataDict, filePath):
             margin: 8px 0;
             font-size: 1.1em;
         }}
-        #lastUpdated {{
-            text-align: center;
-            font-size: 0.9em;
-            color: #7f8c8d;
-            margin-top: 10px;
+        .progress-container {{
+            width: 100%;
+            background-color: #2c3e50;
+            border-radius: 5px;
+            height: 20px;
+            overflow: hidden;
+            margin: 10px 0;
+            position: relative;
+        }}
+        .progress-bar {{
+            height: 100%;
+            background-color: #27ae60;
+            width: {dataDict['analytics']['percentComplete'] * 100}%;
+            transition: width 1s ease-in-out;
+        }}
+        .progress-text {{
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
         }}
     </style>
 </head>
 <body>
     <h1>Render Data Dashboard</h1>
+    <div id="lastUpdated">Last updated: {datetime.now().strftime('%I:%M:%S %p')} | Project: {os.path.basename(filePath).replace('_dashboard.html', '')}</div>
 
     <div class="section analytics-box">
         <h2>Render Analytics</h2>
@@ -321,7 +358,10 @@ def writeHtmlFile(dataDict, filePath):
         <p><strong>ETA:</strong> {dataDict['analytics']['ETA']}</p>
         <p><strong>Total Render Time:</strong> {dataDict['analytics']['totalRenderTime']}</p>
         <p><strong>Frames/Minute:</strong> {dataDict['analytics']['framesPerMinute']}</p>
-        <p><strong>Progress:</strong> {dataDict['analytics']['percentCompleteStr']}</p>
+        <div class="progress-container">
+            <div class="progress-bar"></div>
+            <div class="progress-text">{dataDict['analytics']['percentCompleteStr']}</div>
+        </div>
     </div>
 
     <div class="section">
@@ -334,19 +374,20 @@ def writeHtmlFile(dataDict, filePath):
                     <th>Total Frames</th>
                     <th>Frames/Min</th>
                     <th>Last Frame</th>
-                    <th>Total Time (s)</th>
+                    <th>Total Time</th>
                 </tr>
             </thead>
             <tbody>
 """
     for nodeName, metadata in dataDict['nodes'].items():
+        totalTimeFormatted = convertSecsToHoursMinutes(metadata['totalDuration'])
         html_content += f"""                <tr>
                     <td>{nodeName}</td>
                     <td>{metadata['averageFrame']:.2f}</td>
                     <td>{metadata['totalFrames']}</td>
                     <td>{metadata['framesPerMinute']:.2f}</td>
                     <td>{metadata['lastCompletedFrame']}</td>
-                    <td>{metadata['totalDuration']:.1f}</td>
+                    <td>{totalTimeFormatted}</td>
                 </tr>
 """
     html_content += """            </tbody>
@@ -382,8 +423,6 @@ def writeHtmlFile(dataDict, filePath):
         </table>
     </div>
 
-    <div id="lastUpdated">Last updated: {datetime.now().strftime('%I:%M:%S %p')} | Project: {os.path.basename(filePath).replace('_dashboard.html', '')}</div>
-
     <script>
         function sortTable(n, tableId) {{
             var table = document.getElementById(tableId);
@@ -397,10 +436,9 @@ def writeHtmlFile(dataDict, filePath):
                     y = rows[i + 1].getElementsByTagName("TD")[n];
                     var xContent = x.textContent;
                     var yContent = y.textContent;
-                    // Handle numeric or date sorting
                     if (n === 0 || n === 2 || n === 3 || n === 5) {{ // Frame, Time (s), Size (MB), Total Frames, Total Time (s)
-                        xContent = parseFloat(xContent) || 0;
-                        yContent = parseFloat(yContent) || 0;
+                        xContent = n === 5 ? parseTimeToSeconds(xContent) : parseFloat(xContent) || 0;
+                        yContent = n === 5 ? parseTimeToSeconds(yContent) : parseFloat(yContent) || 0;
                     }} else if (n === 4) {{ // Completed (date/time)
                         xContent = new Date(xContent).getTime();
                         yContent = new Date(yContent).getTime();
@@ -426,6 +464,16 @@ def writeHtmlFile(dataDict, filePath):
                     switching = true;
                 }}
             }}
+        }}
+
+        function parseTimeToSeconds(timeStr) {{
+            var parts = timeStr.match(/(\\d+)\\s*hr?s?,?\\s*(\\d+)\\s*min?s?/i) || [];
+            var hours = parseInt(parts[1]) || 0;
+            var minutes = parseInt(parts[2]) || 0;
+            if (!parts[1] && !parts[2]) {{ // If no hours, just minutes
+                minutes = parseInt(timeStr) || 0;
+            }}
+            return (hours * 3600) + (minutes * 60);
         }}
 
         document.addEventListener("DOMContentLoaded", function() {{

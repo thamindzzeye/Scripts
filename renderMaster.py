@@ -182,6 +182,17 @@ def getActiveProjects():
 		return currentProjects
 		
 
+def filter_files_by_extension(files, extension):
+    # Ensure extension starts with a dot and is lowercase
+    if not extension.startswith('.'):
+        extension = '.' + extension
+    extension = extension.lower()
+    
+    # Filter files that end with the specified extension (case-insensitive)
+    filtered_files = [file for file in files if file.lower().endswith(extension)]
+    
+    return filtered_files
+
 def createVideoFiles():
 	root = systemPath(pathActiveRenders)
 	projectName = selectFolder(root)
@@ -189,11 +200,13 @@ def createVideoFiles():
 	print(projectName)
 
 	
-	frames = os.listdir(project)
+	frames = filter_files_by_extension(os.listdir(project), '.png')
+
 	frames.sort()
 	if len(frames) == 0:
 		print("NO Frames Found Skipping")
 		return
+	print(frames[0])
 	firstFrame = int(frames[0].replace('frame_','').replace('.png',''))
 	lastFrame = int(frames[-1].replace('frame_','').replace('.png',''))
 	print('first = ' + str(firstFrame) + ' last = ' + str(lastFrame))
