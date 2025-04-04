@@ -521,6 +521,7 @@ def cancelActiveRender():
 	index = 0
 	for project in activeProjects:
 		print(str(index) + ') - Name: ' + project['blendName'])
+		index += 1
 
 	cancelIndex = input('Project to Cancel: ')
 	index = int(cancelIndex)

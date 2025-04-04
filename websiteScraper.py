@@ -15,8 +15,9 @@ class WebsiteMediaScraper:
         self.download_dir = Path.home() / "Downloads" / "Website_Media"
         self.download_dir.mkdir(parents=True, exist_ok=True)
         
-        # Track visited URLs to avoid duplicates
+        # Track visited URLs and downloaded images
         self.visited_urls = set()
+        self.image_map = {}  # Maps original URLs to local filenames
         
         # Supported media types
         self.image_types = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')
@@ -54,13 +55,15 @@ class WebsiteMediaScraper:
             
         return True
 
-    def download_file(self, url, filename):
-        """Download a single media file or PDF"""
+    def download_file(self, url, filename, is_image=False):
+        """Download a file and optionally track it if it's an image"""
         try:
             filepath = self.download_dir / filename
             
             # Skip if file already exists
             if filepath.exists():
+                if is_image:
+                    self.image_map[url] = filename  # Still map it for reference
                 print(f"Skipping existing file: {filename}")
                 return
             
@@ -74,14 +77,125 @@ class WebsiteMediaScraper:
                         print(f"Cancelled download of {filename}")
                         return
                     f.write(chunk)
-                    
+            
+            if is_image:
+                self.image_map[url] = filename  # Map original URL to local filename
+            
             print(f"Downloaded: {filename}")
             
         except requests.RequestException as e:
             print(f"Failed to download {url}: {e}")
 
+    def extract_and_save_tables(self, soup, url):
+        """Extract all visible tables, update image references, and save as HTML"""
+        try:
+            # Find all visible tables
+            tables = [table for table in soup.find_all('table') if self.is_element_visible(table)]
+            
+            if tables:
+                # Download images within tables
+                for table in tables:
+                    for img in table.find_all('img'):
+                        src = img.get('src')
+                        if src:
+                            full_url = urljoin(url, src)
+                            if self.is_media_file(full_url) and full_url.lower().endswith(self.image_types):
+                                filename = os.path.basename(urlparse(full_url).path) or f"table_img_{len(self.image_map)}.jpg"
+                                self.download_file(full_url, filename, is_image=True)
+                                # Update the src to local path (relative to the HTML file)
+                                img['src'] = filename
+                
+                # Create HTML with sorting script and enhanced styling
+                html_content = """<!DOCTYPE html>
+<html>
+<head>
+    <title>Extracted Tables</title>
+    <style>
+        table { border-collapse: collapse; width: 100%; margin-bottom: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; cursor: pointer; }
+        tr:nth-child(even) { background-color: #f9f9f9; }
+        tr:nth-child(odd) { background-color: #ffffff; }
+        h2 { margin-top: 20px; }
+        .sortable th:hover { background-color: #ddd; }
+    </style>
+    <script>
+        function sortTable(n, table) {
+            var rows, switching = true, i, x, y, shouldSwitch, dir = "asc", switchcount = 0;
+            while (switching) {
+                switching = false;
+                rows = table.rows;
+                for (i = 1; i < (rows.length - 1); i++) {
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+                    var xContent = x.textContent.toLowerCase();
+                    var yContent = y.textContent.toLowerCase();
+                    if (dir == "asc") {
+                        if (xContent > yContent) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    } else if (dir == "desc") {
+                        if (xContent < yContent) {
+                            shouldSwitch = true;
+                            break;
+                        }
+                    }
+                }
+                if (shouldSwitch) {
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                } else if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+        document.addEventListener("DOMContentLoaded", function() {
+            var tables = document.getElementsByClassName("sortable");
+            for (var t = 0; t < tables.length; t++) {
+                var headers = tables[t].getElementsByTagName("th");
+                for (var i = 0; i < headers.length; i++) {
+                    headers[i].addEventListener("click", (function(tableIndex, colIndex) {
+                        return function() { sortTable(colIndex, tables[tableIndex]); };
+                    })(t, i));
+                }
+            }
+        });
+    </script>
+</head>
+<body>
+    
+"""
+                # Add each table with a heading
+                for i, table in enumerate(tables, 1):
+                    # Preserve or add the sortable class
+                    if 'sortable' not in table.get('class', []):
+                        table['class'] = table.get('class', []) + ['sortable']
+                    else:
+                        table['class'] = table.get('class', [])
+                    
+                    preceding_h = table.find_previous(['h1', 'h2', 'h3', 'h4', 'h5', 'h6'])
+                    table_title = f"Table {i}" if not preceding_h else f"Table {i}: {preceding_h.get_text(strip=True)}"
+                    html_content += f"    <h2>{table_title}</h2>\n    {str(table)}\n"
+                
+                html_content += """</body>
+</html>"""
+                
+                # Save to file
+                table_file = self.download_dir / "extracted_tables.html"
+                with open(table_file, 'w', encoding='utf-8') as f:
+                    f.write(html_content)
+                print(f"Saved {len(tables)} table(s) to: {table_file}")
+            else:
+                print("No visible tables found on the page")
+        except Exception as e:
+            print(f"Failed to extract or save tables: {e}")
+
     def scrape_page(self, url):
-        """Scrape a single page for visible media and PDFs"""
+        """Scrape a single page for visible media, PDFs, and tables"""
         if self.is_cancelled or url in self.visited_urls:
             return
         
@@ -92,7 +206,10 @@ class WebsiteMediaScraper:
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Find all visible images
+            # Extract and save all visible tables (including image handling)
+            self.extract_and_save_tables(soup, url)
+            
+            # Find all visible images (outside tables)
             for img in soup.find_all('img'):
                 if self.is_cancelled:
                     break
@@ -100,8 +217,8 @@ class WebsiteMediaScraper:
                 if src and self.is_element_visible(img):
                     full_url = urljoin(url, src)
                     if self.is_media_file(full_url) and full_url.lower().endswith(self.image_types):
-                        filename = os.path.basename(urlparse(full_url).path) or f"img_{len(os.listdir(self.download_dir))}.jpg"
-                        self.download_file(full_url, filename)
+                        filename = os.path.basename(urlparse(full_url).path) or f"img_{len(self.image_map)}.jpg"
+                        self.download_file(full_url, filename, is_image=True)
             
             # Find all visible videos
             for video in soup.find_all('video'):
@@ -132,7 +249,7 @@ class WebsiteMediaScraper:
             print(f"Failed to scrape {url}: {e}")
 
     def create_image_pdf(self):
-        """Create a PDF with all downloaded images using full Legal landscape dimensions"""
+        """Create a PDF with downloaded images, skipping those < 300px in width or height"""
         # Legal landscape dimensions
         pdf_width = 355.6  # Width in mm (14 inches)
         pdf_height = 215.9  # Height in mm (8.5 inches)
@@ -152,13 +269,18 @@ class WebsiteMediaScraper:
         
         for image_path in image_files:
             try:
-                # Add a new page with black background
-                pdf.add_page()
-                pdf.rect(0, 0, pdf_width, pdf_height, 'F')  # Fill entire page with black
-                
-                # Open image and get dimensions
+                # Open image and check dimensions
                 with Image.open(image_path) as img:
                     img_width, img_height = img.size
+                    
+                    # Skip images smaller than 300px in width or height
+                    if img_width < 300 or img_height < 300:
+                        print(f"Skipping {image_path.name} for PDF (size {img_width}x{img_height} < 300px)")
+                        continue
+                    
+                    # Add a new page with black background
+                    pdf.add_page()
+                    pdf.rect(0, 0, pdf_width, pdf_height, 'F')  # Fill entire page with black
                     
                     # Convert pixel dimensions to mm (assuming 300 DPI)
                     dpi = 300
@@ -190,8 +312,8 @@ class WebsiteMediaScraper:
         print(f"Created PDF: {pdf_output}")
 
     def scrape_website(self, start_url):
-        """Main method to scrape and create PDF"""
-        print(f"Scraping visible media and PDFs from: {start_url}")
+        """Main method to scrape and create outputs"""
+        print(f"Scraping visible media, PDFs, and tables from: {start_url}")
         print(f"Saving files to: {self.download_dir}")
         
         # Normalize URL
@@ -211,14 +333,14 @@ class WebsiteMediaScraper:
 
 def main():
     # Set up argument parser
-    parser = argparse.ArgumentParser(description='Scrape visible media and PDFs from a website, then create an image PDF')
+    parser = argparse.ArgumentParser(description='Scrape visible media, PDFs, and tables from a website, then create outputs')
     parser.add_argument('url', help='Website URL to scrape')
     args = parser.parse_args()
     
     # Create scraper instance
     scraper = WebsiteMediaScraper()
     
-    # Start scraping and PDF creation
+    # Start scraping and processing
     try:
         scraper.scrape_website(args.url)
     except KeyboardInterrupt:

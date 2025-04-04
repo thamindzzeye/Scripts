@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Render Data Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+            color: #2c3e50;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #34495e;
+            margin-bottom: 20px;
+        }
+        
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .section {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        
+        th {
+            background-color: #2980b9;
+            color: white;
+            font-weight: 600;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        
+        tr:hover {
+            background-color: #ecf0f1;
+            transition: background-color 0.2s;
+        }
+        
+        .analytics-box h2 {
+            color: #34495e;
+            margin-bottom: 15px;
+        }
+        
+        .analytics-box p {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+        
+        .error {
+            color: #c0392b;
+            text-align: center;
+            padding: 20px;
+        }
+        
+        pre {
+            margin: 0;
+            font-size: 0.9em;
+        }
+        
+        #lastUpdated {
+            text-align: center;
+            font-size: 0.9em;
+            color: #7f8c8d;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Render Data Dashboard</h1>
+    <div class="controls">
+        <label for="fileInput">Select JSON File (defaults to render_data.json in this folder): </label>
+        <input type="file" id="fileInput" accept=".json">
+    </div>
+
+    <div class="section analytics-box">
+        <h2>Render Analytics</h2>
+        <div id="analyticsContent"></div>
+    </div>
+
+    <div class="section">
+        <h2>Node Statistics</h2>
+        <table id="nodesTable">
+            <thead>
+                <tr>
+                    <th>Computer</th>
+                    <th>Avg Frame (s)</th>
+                    <th>Total Frames</th>
+                    <th>Frames/Min</th>
+                    <th>Last Frame</th>
+                    <th>Total Time (s)</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="section">
+        <h2>Frame Data</h2>
+        <table id="framesTable">
+            <thead>
+                <tr>
+                    <th>Frame</th>
+                    <th>Computer</th>
+                    <th>Time (s)</th>
+                    <th>Size (MB)</th>
+                    <th>Completed</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div id="lastUpdated"></div>
+
+    <script>
+        let selectedFile = null;
+        const defaultFileName = 'render_data.json';
+
+        async function loadData() {
+            let data;
+            let sourceName = '';
+
+            try {
+                if (selectedFile) {
+                    // Use the user-selected file if one exists
+                    const reader = new FileReader();
+                    data = await new Promise((resolve, reject) => {
+                        reader.onload = () => resolve(JSON.parse(reader.result));
+                        reader.onerror = () => reject(new Error('Failed to read file'));
+                        reader.readAsText(selectedFile);
+                    });
+                    sourceName = selectedFile.name;
+                } else {
+                    // Fall back to default file only if no file has been selected
+                    const response = await fetch(defaultFileName);
+                    if (!response.ok) throw new Error(`Default file "${defaultFileName}" not found`);
+                    data = await response.json();
+                    sourceName = defaultFileName;
+                }
+
+                // Clear existing contents
+                const framesBody = document.querySelector('#framesTable tbody');
+                const nodesBody = document.querySelector('#nodesTable tbody');
+                const analyticsContent = document.getElementById('analyticsContent');
+                framesBody.innerHTML = '';
+                nodesBody.innerHTML = '';
+                analyticsContent.innerHTML = '';
+
+                // Populate Frames Table
+                for (const [frameNum, frameData] of Object.entries(data.frames)) {
+                    const row = document.createElement('tr');
+                    const [computer, renderTime, fileSize, timestamp] = frameData;
+                    const sizeMB = parseFloat(fileSize.split(' ')[0]);
+                    
+                    row.innerHTML = `
+                        <td>${frameNum}</td>
+                        <td>${computer}</td>
+                        <td>${renderTime.toFixed(2)}</td>
+                        <td>${sizeMB.toFixed(2)}</td>
+                        <td>${timestamp}</td>
+                    `;
+                    framesBody.appendChild(row);
+                }
+
+                // Populate Nodes Table
+                for (const [nodeName, metadata] of Object.entries(data.nodes)) {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${nodeName}</td>
+                        <td>${metadata.averageFrame.toFixed(2)}</td>
+                        <td>${metadata.totalFrames}</td>
+                        <td>${metadata.framesPerMinute.toFixed(2)}</td>
+                        <td>${metadata.lastCompletedFrame}</td>
+                        <td>${metadata.totalDuration.toFixed(1)}</td>
+                    `;
+                    nodesBody.appendChild(row);
+                }
+
+                // Populate Analytics
+                analyticsContent.innerHTML = `
+                    <p><strong>Time Left:</strong> ${data.analytics.timeLeft}</p>
+                    <p><strong>ETA:</strong> ${data.analytics.ETA}</p>
+                    <p><strong>Total Render Time:</strong> ${data.analytics.totalRenderTime}</p>
+                    <p><strong>Frames/Minute:</strong> ${data.analytics.framesPerMinute}</p>
+                    <p><strong>Progress:</strong> ${data.analytics.percentCompleteStr}</p>
+                `;
+
+                // Update last refreshed timestamp
+                document.getElementById('lastUpdated').textContent = 
+                    `Last updated: ${new Date().toLocaleTimeString()} | File: ${sourceName}`;
+
+            } catch (error) {
+                document.getElementById('lastUpdated').textContent = 
+                    `Error: ${error.message}. Please select a JSON file if the default "${defaultFileName}" is unavailable.`;
+            }
+        }
+
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', (event) => {
+            selectedFile = event.target.files[0];
+            if (selectedFile) {
+                loadData(); // Load immediately when a file is selected
+            }
+        });
+
+        // Initial load
+        loadData();
+
+        // Reload data every 30 seconds
+        setInterval(loadData, 30000);
+    </script>
+</body>
+</html>

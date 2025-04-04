@@ -470,7 +470,9 @@ def parseBlenderOutputFiles():
 
 	if hasChanged:
 		writeJsonToFile(fullData, dataPath)
-	print(strTime + ' | ' + currentRenderDict['blendName'] + ' | Last Frame: ' + lastRenderedFrame)
+
+	if currentRenderDict:
+		print(strTime + ' | ' + currentRenderDict['blendName'] + ' | Last Frame: ' + str(lastRenderedFrame))
 
 
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
