@@ -44,10 +44,16 @@ def monitorDirectory():
     return systemPath(path)
 
 def readJsonFile(path, errorDefault):
-    with open(path, "r") as jsonData:
-        data = json.load(jsonData)
-        return data
-    return errorDefault
+    try:
+        with open(path, "r") as jsonData:
+            data = json.load(jsonData)
+            return data
+    except:
+        return errorDefault
+
+def writeJsonToFile(dataDict, filePath):
+    with open(filePath, 'w', encoding='utf-8') as f:
+        json.dump(dataDict, f, ensure_ascii=False, indent=4)
 
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 ## -------------------------------------------------- Watcher Class Functions  ----------------------------------------------------------- ##
@@ -119,10 +125,11 @@ def parseNewJsonFile(filePath):
     startFrame = int(activeProject['startFrame'])
     endFrame = int(activeProject['endFrame'])
     
-    dataPath = os.path.join(systemPath(pathDataRoot), projectName + '_dashboard.html')  # Changed to HTML output
+    jsonPath = os.path.join(systemPath(pathDataRoot), projectName + '.json')
+    htmlPath = os.path.join(systemPath(pathDataRoot), projectName + '_dashboard.html')
     dataDict = {}
-    if os.path.exists(dataPath.replace('_dashboard.html', '.json')):  # Check old JSON for backward compatibility
-        dataDict = readJsonFile(dataPath.replace('_dashboard.html', '.json'), {})
+    if os.path.exists(jsonPath):
+        dataDict = readJsonFile(jsonPath, {})
     else:
         dataDict['frames'] = {}
 
@@ -202,8 +209,9 @@ def parseNewJsonFile(filePath):
         analytics['percentComplete'] = percentComplete
 
     if hasChanged:
-        print('New data detected, generating HTML...')
-        writeHtmlFile(dataDict, dataPath)
+        print('New data detected, updating JSON and generating HTML...')
+        writeJsonToFile(dataDict, jsonPath)  # Save to JSON
+        writeHtmlFile(dataDict, htmlPath)    # Generate HTML
     else:
         print('No new data')
 
@@ -233,13 +241,13 @@ def getFileStats(rootPath, index):
     return filesize, created, rawTime
 
 def writeHtmlFile(dataDict, filePath):
-    # Generate HTML content with embedded data
+    # Generate HTML content with embedded data and sortable tables
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="30"> <!-- Added autoreload every 30 seconds -->
+    <meta http-equiv="refresh" content="30"> <!-- Auto-refresh every 30 seconds -->
     <title>Render Data Dashboard</title>
     <style>
         body {{
@@ -276,6 +284,10 @@ def writeHtmlFile(dataDict, filePath):
             background-color: #2980b9;
             color: white;
             font-weight: 600;
+            cursor: pointer;
+        }}
+        th:hover {{
+            background-color: #1f6391;
         }}
         tr:nth-child(even) {{
             background-color: #f9f9f9;
@@ -314,7 +326,7 @@ def writeHtmlFile(dataDict, filePath):
 
     <div class="section">
         <h2>Node Statistics</h2>
-        <table id="nodesTable">
+        <table class="sortable" id="nodesTable">
             <thead>
                 <tr>
                     <th>Computer</th>
@@ -343,7 +355,7 @@ def writeHtmlFile(dataDict, filePath):
 
     <div class="section">
         <h2>Frame Data</h2>
-        <table id="framesTable">
+        <table class="sortable" id="framesTable">
             <thead>
                 <tr>
                     <th>Frame</th>
@@ -371,6 +383,63 @@ def writeHtmlFile(dataDict, filePath):
     </div>
 
     <div id="lastUpdated">Last updated: {datetime.now().strftime('%I:%M:%S %p')} | Project: {os.path.basename(filePath).replace('_dashboard.html', '')}</div>
+
+    <script>
+        function sortTable(n, tableId) {{
+            var table = document.getElementById(tableId);
+            var rows, switching = true, i, x, y, shouldSwitch, dir = "asc", switchcount = 0;
+            while (switching) {{
+                switching = false;
+                rows = table.rows;
+                for (i = 1; i < (rows.length - 1); i++) {{
+                    shouldSwitch = false;
+                    x = rows[i].getElementsByTagName("TD")[n];
+                    y = rows[i + 1].getElementsByTagName("TD")[n];
+                    var xContent = x.textContent;
+                    var yContent = y.textContent;
+                    // Handle numeric or date sorting
+                    if (n === 0 || n === 2 || n === 3 || n === 5) {{ // Frame, Time (s), Size (MB), Total Frames, Total Time (s)
+                        xContent = parseFloat(xContent) || 0;
+                        yContent = parseFloat(yContent) || 0;
+                    }} else if (n === 4) {{ // Completed (date/time)
+                        xContent = new Date(xContent).getTime();
+                        yContent = new Date(yContent).getTime();
+                    }}
+                    if (dir === "asc") {{
+                        if (xContent > yContent) {{
+                            shouldSwitch = true;
+                            break;
+                        }}
+                    }} else if (dir === "desc") {{
+                        if (xContent < yContent) {{
+                            shouldSwitch = true;
+                            break;
+                        }}
+                    }}
+                }}
+                if (shouldSwitch) {{
+                    rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                    switching = true;
+                    switchcount++;
+                }} else if (switchcount === 0 && dir === "asc") {{
+                    dir = "desc";
+                    switching = true;
+                }}
+            }}
+        }}
+
+        document.addEventListener("DOMContentLoaded", function() {{
+            var tables = document.getElementsByClassName("sortable");
+            for (var t = 0; t < tables.length; t++) {{
+                var headers = tables[t].getElementsByTagName("th");
+                for (var i = 0; i < headers.length; i++) {{
+                    headers[i].addEventListener("click", (function(tableIndex, colIndex) {{
+                        return function() {{ sortTable(colIndex, tables[tableIndex].id); }};
+                    }})(t, i));
+                }}
+            }}
+        }});
+    </script>
 </body>
 </html>
 """
