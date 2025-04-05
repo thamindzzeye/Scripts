@@ -21,13 +21,13 @@ def getComputerName():
 	return parts[0]
 	
 class Status(Enum):
-    PAUSED = 1
-    ACTIVE = 2
-    VALIDATE = 3
-    COMPLETE = 4
-    VIDEO_COMPLETE = 5
-    READY_TO_DELETE = 6
-    CANCELLED = 7
+	PAUSED = 1
+	ACTIVE = 2
+	VALIDATE = 3
+	COMPLETE = 4
+	VIDEO_COMPLETE = 5
+	READY_TO_DELETE = 6
+	CANCELLED = 7
 
 #Global Paths
 pathProjects = ['/Volumes/Public/Blender/Projects', 'A:\\Blender\\Projects']
@@ -68,11 +68,11 @@ def updateLastModifiedDatesInFolder(folderPath, dateDict, channel):
 
 def selectFile(path, ext):
 	files = []
-	    # loop through all the entries in the path directory
+		# loop through all the entries in the path directory
 	for file in os.scandir(path):
-	    # if the entry is a folder, append its name to the list
-	    if file.name.endswith(ext):
-	        files.append(file.name)
+		# if the entry is a folder, append its name to the list
+		if file.name.endswith(ext):
+			files.append(file.name)
 	files.sort()
 	if len(files) == 0:
 		print('''ERROR: Make Sure your connected to Alexandria First!
@@ -95,11 +95,11 @@ def selectFile(path, ext):
 
 def selectFolder(path):
 	folders = []
-	    # loop through all the entries in the path directory
+		# loop through all the entries in the path directory
 	for entry in os.scandir(path):
-	    # if the entry is a folder, append its name to the list
-	    if entry.is_dir():
-	        folders.append(entry.name)
+		# if the entry is a folder, append its name to the list
+		if entry.is_dir():
+			folders.append(entry.name)
 	folders.sort()
 	if len(folders) == 0:
 		print('''ERROR: Make Sure your connected to Alexandria First!
@@ -183,15 +183,15 @@ def getActiveProjects():
 		
 
 def filter_files_by_extension(files, extension):
-    # Ensure extension starts with a dot and is lowercase
-    if not extension.startswith('.'):
-        extension = '.' + extension
-    extension = extension.lower()
-    
-    # Filter files that end with the specified extension (case-insensitive)
-    filtered_files = [file for file in files if file.lower().endswith(extension)]
-    
-    return filtered_files
+	# Ensure extension starts with a dot and is lowercase
+	if not extension.startswith('.'):
+		extension = '.' + extension
+	extension = extension.lower()
+	
+	# Filter files that end with the specified extension (case-insensitive)
+	filtered_files = [file for file in files if file.lower().endswith(extension)]
+	
+	return filtered_files
 
 def createVideoFiles():
 	root = systemPath(pathActiveRenders)
@@ -233,28 +233,41 @@ def createVideoFiles():
 	numFrames = str(latestFrame - firstFrame + 1)
 	destinationVideo = '"' + os.path.join(systemPath(pathVideoOutputs), projectName + ' [' + str(firstFrame) + '-' + str(latestFrame - firstFrame + 1) + ']' + '.mp4') + '"'
 	print(numFrames)
-	myargs = [
+	ffmpeg_cmd = [
 	'ffmpeg',
 	'-framerate', '30',
+	'-i', 'frame_%04d.png', # '-i', '"' + os.path.join(project, 'frame_%04d.png') + '"',
 	'-start_number', str(firstFrame),
-	'-i', '"' + os.path.join(project, 'frame_%04d.png') + '"',
 	'-vframes', numFrames,
 	'-c:v', 'libx265',
-	'preset', 'slow',
-	'crf', '20',
+	'-preset', 'slow',
+	'-crf', '20',
 	'-pix_fmt', 'yuv420p10le',
 	'-tag:v', 'hvc1',
-	'-y',
+	'-f', 'mp4',
 	destinationVideo]
-	cmd = ''
-	for arg in myargs:
-		cmd = cmd + arg + ' '
-	print(cmd)
-	if platform.system() == 'Windows':
-		cmd = cmd.replace('-c:v libx264', '')
-	os.system(cmd)
+	
 
-	print('\n\nComplete!\n\n\n')
+	# Print the command for debugging
+	print("Running FFmpeg command:", " ".join(ffmpeg_cmd))
+	
+	try:
+		# Run FFmpeg command
+		result = subprocess.run(
+			ffmpeg_cmd,
+			check=True,
+			stdout=subprocess.PIPE,
+			stderr=subprocess.PIPE,
+			text=True
+		)
+		print("Success! Movie created:", output_file)
+		print("FFmpeg output:", result.stdout)
+		
+	except subprocess.CalledProcessError as e:
+		print("Error creating movie:")
+		print("FFmpeg error output:", e.stderr)
+	except FileNotFoundError:
+		print("Error: FFmpeg not found. Please ensure FFmpeg is installed and in your PATH.")
 
 
 def takeActionCleanBlend1Files():
@@ -281,22 +294,22 @@ def takeActionCleanBlend1Files():
 		print("Cancelled")
 	
 def findFiles(root, ext):
-    # initialize two empty lists to store the paths and sizes
-    paths = []
-    sizes = []
-    # loop through all the files and folders in the root directory
-    for entry in os.scandir(root):
-        # if the entry is a file and has the given extension, append its path and size to the lists
-        if entry.is_file() and entry.name.endswith(ext):
-            paths.append(entry.path)
-            sizes.append(entry.stat().st_size / (1024 * 1024)) # convert bytes to megabytes
-        # if the entry is a folder, recursively call the function on it and extend the lists with the results
-        elif entry.is_dir():
-            sub_paths, sub_sizes = findFiles(entry.path, ext)
-            paths.extend(sub_paths)
-            sizes.extend(sub_sizes)
-    # return the lists of paths and sizes
-    return paths, sizes
+	# initialize two empty lists to store the paths and sizes
+	paths = []
+	sizes = []
+	# loop through all the files and folders in the root directory
+	for entry in os.scandir(root):
+		# if the entry is a file and has the given extension, append its path and size to the lists
+		if entry.is_file() and entry.name.endswith(ext):
+			paths.append(entry.path)
+			sizes.append(entry.stat().st_size / (1024 * 1024)) # convert bytes to megabytes
+		# if the entry is a folder, recursively call the function on it and extend the lists with the results
+		elif entry.is_dir():
+			sub_paths, sub_sizes = findFiles(entry.path, ext)
+			paths.extend(sub_paths)
+			sizes.extend(sub_sizes)
+	# return the lists of paths and sizes
+	return paths, sizes
 
 def takeActionNewActiveRender():
 	print('\nBLENDER CHECKLIST\n\n1. Have you set the Output Settings -> RGB for all videos without alpha (standard)\nRGBA - ONLY when alpha pixels are present\n2. Color Depth -> 16 (16 bit color)\n3. Image Sequence -> YES for Placeholder, NO for Overwrite')
@@ -458,69 +471,69 @@ def cleanupOldProjects():
 	delete_old_folders(systemPath(pathActiveRenders))
 		
 def delete_old_folders(root_folder):
-    """
-    Scans all subfolders in root_folder, filters those older than 2 weeks,
-    and prompts the user to delete them.
+	"""
+	Scans all subfolders in root_folder, filters those older than 2 weeks,
+	and prompts the user to delete them.
 
-    Args:
-        root_folder (str): Path to the root directory to scan.
-    """
-    # Ensure the root folder exists
-    if not os.path.isdir(root_folder):
-        print(f"Error: '{root_folder}' is not a valid directory.")
-        return
+	Args:
+		root_folder (str): Path to the root directory to scan.
+	"""
+	# Ensure the root folder exists
+	if not os.path.isdir(root_folder):
+		print(f"Error: '{root_folder}' is not a valid directory.")
+		return
 
-    # Calculate the cutoff date (2 weeks ago)
-    two_weeks_ago = datetime.now() - timedelta(weeks=2)
-    
-    # List to store folders older than 2 weeks
-    old_folders = []
+	# Calculate the cutoff date (2 weeks ago)
+	two_weeks_ago = datetime.now() - timedelta(weeks=2)
+	
+	# List to store folders older than 2 weeks
+	old_folders = []
 
-    # Walk through all subdirectories
-    for dirpath, dirnames, filenames in os.walk(root_folder):
-        # Skip the root folder itself, only process subfolders
-        if dirpath == root_folder:
-            continue
-        
-        # Get the last modified time of the folder
-        mod_time = datetime.fromtimestamp(os.path.getmtime(dirpath))
-        
-        # Check if the folder is older than 2 weeks
-        if mod_time < two_weeks_ago:
-            old_folders.append(dirpath)
+	# Walk through all subdirectories
+	for dirpath, dirnames, filenames in os.walk(root_folder):
+		# Skip the root folder itself, only process subfolders
+		if dirpath == root_folder:
+			continue
+		
+		# Get the last modified time of the folder
+		mod_time = datetime.fromtimestamp(os.path.getmtime(dirpath))
+		
+		# Check if the folder is older than 2 weeks
+		if mod_time < two_weeks_ago:
+			old_folders.append(dirpath)
 
-    # If no old folders found, inform the user and exit
-    if not old_folders:
-        print(f"No subfolders older than 2 weeks found in '{root_folder}'.")
-        return
+	# If no old folders found, inform the user and exit
+	if not old_folders:
+		print(f"No subfolders older than 2 weeks found in '{root_folder}'.")
+		return
 
-    # Sort folders for consistent output (optional)
-    old_folders.sort()
+	# Sort folders for consistent output (optional)
+	old_folders.sort()
 
-    # Iterate through old folders and prompt for deletion
-    for folder in old_folders:
-        while True:
-            # Display folder path and last modified date
-            mod_time_str = datetime.fromtimestamp(os.path.getmtime(folder)).strftime('%Y-%m-%d %H:%M:%S')
-            print(f"\nFolder: {folder}")
-            print(f"Last modified: {mod_time_str}")
-            
-            # Prompt user for input
-            response = input("Delete this folder? (y/n): ").strip().lower()
-            
-            if response == 'y':
-                try:
-                    shutil.rmtree(folder)  # Delete the folder and its contents
-                    print(f"Deleted: {folder}")
-                    break
-                except Exception as e:
-                    print(f"Error deleting {folder}: {e}")
-                    break
-            elif response == 'n':
-                print(f"Skipped: {folder}")
-                break
-            else:
-                print("Invalid input. Please enter 'y' for yes or 'n' for no.")
+	# Iterate through old folders and prompt for deletion
+	for folder in old_folders:
+		while True:
+			# Display folder path and last modified date
+			mod_time_str = datetime.fromtimestamp(os.path.getmtime(folder)).strftime('%Y-%m-%d %H:%M:%S')
+			print(f"\nFolder: {folder}")
+			print(f"Last modified: {mod_time_str}")
+			
+			# Prompt user for input
+			response = input("Delete this folder? (y/n): ").strip().lower()
+			
+			if response == 'y':
+				try:
+					shutil.rmtree(folder)  # Delete the folder and its contents
+					print(f"Deleted: {folder}")
+					break
+				except Exception as e:
+					print(f"Error deleting {folder}: {e}")
+					break
+			elif response == 'n':
+				print(f"Skipped: {folder}")
+				break
+			else:
+				print("Invalid input. Please enter 'y' for yes or 'n' for no.")
 
 def cancelActiveRender():
 	activeProjects = getActiveProjects()
