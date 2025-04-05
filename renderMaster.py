@@ -231,14 +231,14 @@ def createVideoFiles():
 	# if isAlpha:
 
 	numFrames = str(latestFrame - firstFrame + 1)
-	destinationVideo = '"' + os.path.join(systemPath(pathVideoOutputs), projectName + ' [' + str(firstFrame) + '-' + str(latestFrame - firstFrame + 1) + ']' + '.mp4') + '"'
-	print(numFrames)
-	ffmpeg_cmd = [
+    destinationVideo = '"' + os.path.join(systemPath(pathVideoOutputs), projectName + ' [' + str(firstFrame) + '-' + str(latestFrame - firstFrame + 1) + ']' + '.mp4') + '"'
+    print(numFrames)
+	myargs = [
 	'ffmpeg',
 	'-framerate', '30',
-	'-i', 'frame_%04d.png', # '-i', '"' + os.path.join(project, 'frame_%04d.png') + '"',
+	'-i', '"' + os.path.join(project, 'frame_%04d.png') + '"',
 	'-start_number', str(firstFrame),
-	'-vframes', numFrames,
+	'-frames:v', numFrames,
 	'-c:v', 'libx265',
 	'-preset', 'slow',
 	'-crf', '20',
@@ -247,27 +247,21 @@ def createVideoFiles():
 	'-f', 'mp4',
 	destinationVideo]
 	
+	cmd = ''
+	for arg in myargs:
+		cmd = cmd + arg + ' '
+ 
+	print(cmd)
+ 
+	if platform.system() == 'Windows':
+ 
+		cmd = cmd.replace('-c:v libx264', '')
+ 
+	os.system(cmd)
+ 
 
-	# Print the command for debugging
-	print("Running FFmpeg command:", " ".join(ffmpeg_cmd))
-	
-	try:
-		# Run FFmpeg command
-		result = subprocess.run(
-			ffmpeg_cmd,
-			check=True,
-			stdout=subprocess.PIPE,
-			stderr=subprocess.PIPE,
-			text=True
-		)
-		print("Success! Movie created:", output_file)
-		print("FFmpeg output:", result.stdout)
-		
-	except subprocess.CalledProcessError as e:
-		print("Error creating movie:")
-		print("FFmpeg error output:", e.stderr)
-	except FileNotFoundError:
-		print("Error: FFmpeg not found. Please ensure FFmpeg is installed and in your PATH.")
+ 
+	print('\n\nComplete!\n\n\n')
 
 
 def takeActionCleanBlend1Files():
