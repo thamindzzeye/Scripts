@@ -235,18 +235,16 @@ def createVideoFiles():
 	print(numFrames)
 	myargs = [
 	'ffmpeg',
-	'-framerate',
-	'30',
-	'-start_number',
-	str(firstFrame),
-	'-i',
-	'"' + os.path.join(project, 'frame_%04d.png') + '"',
-	'-vframes', #number of frames
-	numFrames,
-	'-c:v',
-	'libx264',
-	'-pix_fmt',
-	'yuv420p',
+	'-framerate', '30',
+	'-start_number', str(firstFrame),
+	'-i', '"' + os.path.join(project, 'frame_%04d.png') + '"',
+	'-vframes', numFrames,
+	'-c:v', 'libx265',
+	'preset', 'slow',
+	'crf', 20,
+	'-pix_fmt', 'yuv420p10le',
+	'-tag:v', 'hvc1',
+	'-y',
 	destinationVideo]
 	cmd = ''
 	for arg in myargs:
