@@ -241,7 +241,7 @@ def createVideoFiles():
 	'-vframes', numFrames,
 	'-c:v', 'libx265',
 	'preset', 'slow',
-	'crf', 20,
+	'crf', '20',
 	'-pix_fmt', 'yuv420p10le',
 	'-tag:v', 'hvc1',
 	'-y',
