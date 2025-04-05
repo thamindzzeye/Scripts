@@ -231,8 +231,8 @@ def createVideoFiles():
 	# if isAlpha:
 
 	numFrames = str(latestFrame - firstFrame + 1)
-    destinationVideo = '"' + os.path.join(systemPath(pathVideoOutputs), projectName + ' [' + str(firstFrame) + '-' + str(latestFrame - firstFrame + 1) + ']' + '.mp4') + '"'
-    print(numFrames)
+	destinationVideo = '"' + os.path.join(systemPath(pathVideoOutputs), projectName + ' [' + str(firstFrame) + '-' + str(latestFrame - firstFrame + 1) + ']' + '.mp4') + '"'
+	print(numFrames)
 	myargs = [
 	'ffmpeg',
 	'-framerate', '30',

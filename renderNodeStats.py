@@ -19,6 +19,8 @@ pathRendersRoot = ['/Volumes/Scratch/Renders/Active Renders', 'R:\\Active Render
 pathActiveProjects = ['/Volumes/Scratch/Renders/Data/activeProjects.json', 'R:\\Data\\activeProjects.json']
 pathDataRoot = ['/Volumes/Scratch/Renders/Data/Projects', 'R:\\Data\\Projects']
 
+lastFrameToPreviewPath = ''
+
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
 ## -------------------------------------------------- Global Helper Functions  ----------------------------------------------------------- ##
 ## --------------------------------------------------------------------------------------------------------------------------------------- ##
@@ -147,6 +149,7 @@ def parseNewJsonFile(filePath):
     hasChanged = False
     framesData = dataDict['frames']
     newestCreatedFrame = 0
+    lastFrameToPreview = 0
     for frame, duration in newArray.items():
         if frame in framesData:
             d = framesData[frame]
@@ -183,6 +186,7 @@ def parseNewJsonFile(filePath):
         nodeData['framesPerMinute'] = round(60 / averageTime, 2)
         nodeData['lastCompletedFrame'] = lastFrame
         nodeData['totalDuration'] = round(totalDuration, 0)
+        lastFrameToPreview = lastFrame
 
     if hasChanged:
         if 'analytics' not in dataDict:
@@ -208,7 +212,8 @@ def parseNewJsonFile(filePath):
         
         percentComplete = round(totalFrames / totalProjectFrameCount, 2)
         missingFrames = totalProjectFrameCount - totalFrames
-
+        global lastFrameToPreviewPath
+        lastFrameToPreviewPath = os.path.join(pathRendersRoot[0], projectName, f"frame_{str(lastFrameToPreview).zfill(4)}.png")
         timeRemaining = (float(missingFrames) / fpm) * 60  # in secs
         t = time.time()
         eta = time.strftime("%I:%M:%S %p %m-%d-%Y", time.localtime(t + timeRemaining))
@@ -218,6 +223,7 @@ def parseNewJsonFile(filePath):
         analytics['framesPerMinute'] = str(round(fpm, 1)) + ' Frames/Minute'
         analytics['percentCompleteStr'] = str(round(percentComplete * 100, 0)) + '% Complete'
         analytics['percentComplete'] = percentComplete
+        analytics['framePath'] = os.path.join(pathRendersRoot[0], projectName, f"frame_{str(lastFrameToPreview).zfill(4)}.png")
 
     if hasChanged:
         print('New data detected, updating JSON and generating HTML...')
@@ -252,7 +258,7 @@ def getFileStats(rootPath, index):
     return filesize, created, rawTime
 
 def writeHtmlFile(dataDict, filePath):
-    # Generate HTML content with embedded data, sortable tables, and progress bar with percentage
+    # Generate HTML content with embedded data, sortable tables, progress bar, and last frame preview
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -313,7 +319,7 @@ def writeHtmlFile(dataDict, filePath):
             background-color: #ecf0f1;
             transition: background-color 0.2s;
         }}
-        .analytics-box h2 {{
+        .analytics-box h2, .frame-preview h2 {{
             color: #34495e;
             margin-bottom: 15px;
         }}
@@ -345,6 +351,14 @@ def writeHtmlFile(dataDict, filePath):
             font-weight: bold;
             font-size: 14px;
             text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }}
+        .frame-preview img {{
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            display: block;
+            margin: 0 auto;
         }}
     </style>
 </head>
@@ -390,8 +404,13 @@ def writeHtmlFile(dataDict, filePath):
                     <td>{totalTimeFormatted}</td>
                 </tr>
 """
-    html_content += """            </tbody>
+    html_content += f"""            </tbody>
         </table>
+    </div>
+
+    <div class="section frame-preview">
+        <h2>Last Rendered Frame</h2>
+        <img src="file://{lastFrameToPreviewPath}" alt="Last Rendered Frame">
     </div>
 
     <div class="section">
@@ -455,7 +474,7 @@ def writeHtmlFile(dataDict, filePath):
                         }}
                     }}
                 }}
-                if (shouldSwitch) {{
+                if (shouldSwitch)={{
                     rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
                     switching = true;
                     switchcount++;
